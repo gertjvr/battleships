@@ -1,0 +1,16 @@
+{
+  "name": "kids-battleships",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.7.0",
+  "workspaces": [
+    "web",
+    "engine"
+  ],
+  "scripts": {
+    "dev": "pnpm -C web dev",
+    "build": "pnpm -C engine build && pnpm -C web build",
+    "preview": "pnpm -C web preview"
+  }
+}
+

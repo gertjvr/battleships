@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+html, body, #root { height: 100%; }
+body {
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-900);
+}
+
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 0.75rem; /* py-3 */
+  padding-inline: 1.25rem; /* px-5 */
+  border-radius: 0.5rem; /* rounded-lg */
+  font-size: 1.125rem; /* text-lg */
+  line-height: 1.75rem;
+  font-weight: 600; /* font-semibold */
+  background-color: var(--color-sky-600);
+  color: white;
+}
+.btn:hover { background-color: var(--color-sky-700); }
+.btn:active { background-color: var(--color-sky-800); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible {
+  outline: 2px solid var(--color-sky-600);
+  outline-offset: 2px;
+}
+
+@utility grid-cell {
+  width: 2.5rem;  /* w-10 */
+  height: 2.5rem; /* h-10 */
+  border: 1px solid var(--color-slate-500);
+  text-align: center;
+  vertical-align: middle;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+@media (width >= var(--breakpoint-sm)) {
+  .grid-cell { width: 3rem; height: 3rem; } /* sm:w-12 sm:h-12 */
+}
+.grid-cell:focus-visible {
+  outline: 2px solid var(--color-sky-600);
+  outline-offset: -2px; /* stays within cell border */
+}
+
+@utility overlay {
+  position: fixed;
+  inset: 0;
+  /* Fully opaque to prevent peeking */
+  background-color: rgb(15 23 42); /* slate-900 */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+/* Strong inner outline so adjacent ship cells remain visually separated */
+.grid-cell-ship { box-shadow: inset 0 0 0 1px var(--color-slate-700); }
+
+/* Highlight the last guess cell with an amber inner ring */
+.grid-cell-last { box-shadow: inset 0 0 0 2px var(--color-amber-500); }
+
+/* Emphasize sunk cells with a gold ring + pulse */
+.grid-cell-sunk { box-shadow: inset 0 0 0 2px var(--color-amber-600); }
+.grid-cell-last-sunk { box-shadow: inset 0 0 0 3px var(--color-amber-600), inset 0 0 0 5px rgba(251, 191, 36, 0.35); }
+
+/* Ship sinking animation: slight drop + fade */
+@keyframes sink-down {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  30% { transform: translateY(8px) scale(0.98); opacity: 0.9; }
+  60% { transform: translateY(18px) scale(0.96); opacity: 0.75; }
+  100% { transform: translateY(28px) scale(0.94); opacity: 0.55; }
+}
+.animate-sink { animation: sink-down 1400ms var(--ease-fluid, ease-out); }
+
+/* Gentle jiggle to draw attention while waiting for handoff */
+@keyframes jiggle {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translateX(-1px); }
+  50% { transform: translateX(1px); }
+  75% { transform: translateY(1px); }
+}
+.animate-jiggle { animation: jiggle 600ms ease-in-out infinite; }
+
+/* Water ripple overlay for jiggling (sunk) cells */
+@keyframes ripple {
+  0% { opacity: 0.35; transform: translate(-50%, -50%) scale(0.3); }
+  70% { opacity: 0.08; transform: translate(-50%, -50%) scale(1.8); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); }
+}
+.animate-jiggle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgba(14, 165, 233, 0.35), rgba(14, 165, 233, 0)); /* sky-500-ish */
+  transform: translate(-50%, -50%) scale(0.3);
+  animation: ripple 1200ms ease-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Subtle animations for feedback */
+@keyframes hit-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.animate-hit { animation: hit-pop 220ms var(--ease-snappy, ease-out); }
+
+@keyframes miss-splash {
+  0% { box-shadow: 0 0 0 0 rgba(14,165,233,0.6); }
+  100% { box-shadow: 0 0 0 8px rgba(14,165,233,0); }
+}
+.animate-miss { animation: miss-splash 300ms ease-out; }
+
+@keyframes sunk-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.08); filter: brightness(1.1); }
+}
+.animate-sunk { animation: sunk-pulse 500ms var(--ease-snappy, ease-out); }
+
+/* Subtle per-ship patterns to distinguish adjacent ships */
+.ship-p0 { background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p1 { background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p2 { background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p3 { background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p4 { background-image: repeating-linear-gradient(135deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p5 { background-image: repeating-linear-gradient(22.5deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+
+/* Per-ship inner outline that draws only on outer edges */
+.ship-outline { position: relative; }
+.ship-outline::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 0 solid var(--color-slate-700);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.edge-t::after { border-top-width: 2px; }
+.edge-r::after { border-right-width: 2px; }
+.edge-b::after { border-bottom-width: 2px; }
+.edge-l::after { border-left-width: 2px; }
