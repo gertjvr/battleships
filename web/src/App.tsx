@@ -56,6 +56,7 @@ export default function App() {
   const [pendingHandoff, setPendingHandoff] = useState<{ next: Phase; message: string } | null>(null);
   const [log, setLog] = useState<{ attacker: 1 | 2; text: string; system?: boolean; key: string; side?: 1 | 2 }[]>([]);
   const [names, setNames] = useState<{ 1?: string; 2?: string }>({});
+  const [hydrated, setHydrated] = useState(false);
 
   const nextSize = useMemo<ShipSize | undefined>(() => {
     const i = phase === 'P1_PLACE' ? p1PlaceIndex : p2PlaceIndex;
@@ -272,8 +273,15 @@ export default function App() {
     }
   }, []);
 
+  // Mark hydration complete after we attempted to load state (next tick)
+  useEffect(() => {
+    // Even if nothing to load, we still want to allow saving after initial mount
+    setHydrated(true);
+  }, []);
+
   // Persist on meaningful changes
   useEffect(() => {
+    if (!hydrated) return; // avoid clobbering saved state before hydration
     const state = {
       phase,
       p1: serializePlayer(p1),
@@ -298,6 +306,7 @@ export default function App() {
     } as const;
     saveState(state as any);
   }, [
+    hydrated,
     phase,
     p1,
     p2,
