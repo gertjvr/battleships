@@ -39,6 +39,14 @@ export function playSunk() {
   setTimeout(() => tone(784, 200, 'triangle', 0.06), 340);
 }
 
+export function playWin() {
+  // distinct, longer fanfare
+  tone(659, 180, 'square', 0.07);    // E5
+  setTimeout(() => tone(784, 180, 'square', 0.07), 180);  // G5
+  setTimeout(() => tone(988, 220, 'square', 0.07), 360);  // B5
+  setTimeout(() => tone(1175, 600, 'triangle', 0.06), 560); // D6 sustain
+}
+
 export async function enableAudio(): Promise<boolean> {
   const c = ensureCtx();
   try {

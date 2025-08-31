@@ -29,15 +29,22 @@ type Props = {
 };
 
 export default function PlayView({ currentPlayer, currentPlayerName, meLabel, themLabel, opponentFleet, attackerShots, onFire, ownFleet, opponentShots, banner, lastAttackerShot, lastOpponentShot, sunkOnOpponent, sunkOnSelf, sinkingOnOpponent, sinkingOnSelf, disabled, ctaLabel, ctaMessage, onCta, lastSunkOnOpponent, lastSunkOnSelf, chat }: Props & { chat?: ChatEntry[] }) {
+  const isComputer = !!(currentPlayerName && /computer/i.test(currentPlayerName));
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{currentPlayerName ? currentPlayerName : `Player ${currentPlayer}`}: Take Your Shot</h1>
-      {banner && (
-        <div className="rounded-md bg-emerald-100 text-emerald-800 px-4 py-3">
-          {banner}
-        </div>
-      )}
+      {(() => {
+        const has = !!banner;
+        const thinking = has && /computer is thinking/i.test(banner!);
+        const cls = `rounded-md px-4 py-3 ${thinking ? 'bg-amber-100 text-amber-900 animate-pulse' : 'bg-emerald-100 text-emerald-800'}`;
+        return (
+          <div className={has ? cls : cls + ' invisible'}>
+            {banner || ' '}
+          </div>
+        );
+      })()}
       <div className="grid gap-6 md:grid-cols-2">
+        {!isComputer && (
         <div>
           <h2 className="font-semibold mb-2">Your Guesses</h2>
           <div className="overflow-auto">
@@ -54,10 +61,21 @@ export default function PlayView({ currentPlayer, currentPlayerName, meLabel, th
             />
           </div>
         </div>
+        )}
         <div>
           <h2 className="font-semibold mb-2">Your Fleet (status)</h2>
           <div className="overflow-auto">
-            <Grid mode="display" fleet={ownFleet} shots={opponentShots} showShips highlightKey={lastOpponentShot ?? undefined} sunkKeys={sunkOnSelf ?? undefined} lastSunkKeys={lastSunkOnSelf ?? undefined} sinkingKeys={sinkingOnSelf ?? undefined} disabled={disabled} />
+            <Grid
+              mode="display"
+              fleet={ownFleet}
+              shots={opponentShots}
+              showShips={!(currentPlayerName && /computer/i.test(currentPlayerName))}
+              highlightKey={lastOpponentShot ?? undefined}
+              sunkKeys={sunkOnSelf ?? undefined}
+              lastSunkKeys={lastSunkOnSelf ?? undefined}
+              sinkingKeys={sinkingOnSelf ?? undefined}
+              disabled={disabled}
+            />
           </div>
         </div>
       </div>

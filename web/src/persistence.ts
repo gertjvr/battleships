@@ -4,6 +4,7 @@ import type { Player, Ship } from '@app/engine';
 const STORAGE_KEY = 'kids-battleships:game:v1';
 
 export type Phase = 'P1_PLACE' | 'P2_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
+export type Mode = 'PVP' | 'PVC';
 
 type PersistedShip = Omit<Ship, 'hits'> & { hits: string[] };
 type PersistedPlayer = Omit<Player, 'shots' | 'fleet'> & { shots: string[]; fleet: PersistedShip[] };
@@ -29,6 +30,7 @@ export type PersistedState = {
   sinkingOnP2?: string[] | null;
   lockUI?: boolean;
   pendingHandoff?: { next: Phase; message: string } | null;
+  mode?: Mode;
 };
 
 function serializeShip(s: Ship): PersistedShip {
@@ -70,4 +72,3 @@ export function loadState(): PersistedState | null {
 export function clearState(): void {
   try { localStorage.removeItem(STORAGE_KEY); } catch {}
 }
-

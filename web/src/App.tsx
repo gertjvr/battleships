@@ -15,8 +15,9 @@ import {
   fire,
   coordsFor,
 } from '@app/engine';
-import { playHit, playMiss, playSunk, enableAudio, isAudioEnabled } from './sound';
-import { loadState, saveState, clearState, serializePlayer, deserializePlayer } from './persistence';
+import { playHit, playMiss, playSunk, playWin, enableAudio, isAudioEnabled } from './sound';
+import { loadState, saveState, clearState, serializePlayer, deserializePlayer, type Mode } from './persistence';
+import { randomPlaceFleet, randomNextShot } from './ai';
 function coordLabel(r: number, c: number): string {
   const letters = ['A','B','C','D','E','F','G','H','I','J'];
   return `${letters[c]}:${r + 1}`;
@@ -38,6 +39,17 @@ export default function App() {
   const [p2PlaceIndex, setP2PlaceIndex] = useState(0);
   const [orientation, setOrientation] = useState<Orientation>('H');
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
+  const [mode, setMode] = useState<Mode>('PVP');
+  useEffect(() => {
+    const persisted = loadState();
+    if (persisted && persisted.mode) setMode(persisted.mode);
+  }, []);
+  useEffect(() => {
+    const current = loadState();
+    if (current) {
+      saveState({ ...current, mode });
+    }
+  }, [mode]);
   const [winner, setWinner] = useState<1 | 2 | null>(null);
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [bannerP1, setBannerP1] = useState<string | null>(null);
@@ -72,7 +84,14 @@ export default function App() {
       const nextIdx = p1PlaceIndex + 1;
       setP1PlaceIndex(nextIdx);
       if (nextIdx >= FLEET_SIZES.length) {
-        setOverlay({ shown: true, message: `Pass the device to ${names[2] ?? 'Player 2'}`, next: 'P2_PLACE' });
+        if (mode === 'PVC') {
+          const autoFleet = randomPlaceFleet();
+          setP2((prev) => ({ ...prev, fleet: autoFleet }));
+          setNames((prev) => ({ ...prev, 2: prev[2] ?? 'Computer' }));
+          setOverlay({ shown: true, message: `${names[1] ?? 'Player 1'} starts!`, next: 'P1_TURN' });
+        } else {
+          setOverlay({ shown: true, message: `Pass the device to ${names[2] ?? 'Player 2'}`, next: 'P2_PLACE' });
+        }
       }
     } else if (phase === 'P2_PLACE') {
       if (!canPlace(p2.fleet, c, size, orientation)) return;
@@ -110,20 +129,26 @@ export default function App() {
   }
 
   function handleDonePlacement() {
-    if (phase === 'P1_PLACE' && p1PlaceIndex >= FLEET_SIZES.length)
-      setOverlay({ shown: true, message: `Pass the device to ${names[2] ?? 'Player 2'}`, next: 'P2_PLACE' });
+    if (phase === 'P1_PLACE' && p1PlaceIndex >= FLEET_SIZES.length) {
+      if (mode === 'PVC') {
+        const autoFleet = randomPlaceFleet();
+        setP2((prev) => ({ ...prev, fleet: autoFleet }));
+        setNames((prev) => ({ ...prev, 2: prev[2] ?? 'Computer' }));
+        setOverlay({ shown: true, message: `${names[1] ?? 'Player 1'} starts!`, next: 'P1_TURN' });
+      } else {
+        setOverlay({ shown: true, message: `Pass the device to ${names[2] ?? 'Player 2'}`, next: 'P2_PLACE' });
+      }
+    }
     if (phase === 'P2_PLACE' && p2PlaceIndex >= FLEET_SIZES.length)
       setOverlay({ shown: true, message: `${names[1] ?? 'Player 1'} starts!`, next: 'P1_TURN' });
   }
 
   function handleFire(r: number, c: number) {
     if (phase === 'P1_TURN') {
-      // Clear any previous banner for P1 when they take action
       if (bannerP1) setBannerP1(null);
-      // Clear last-sunk highlight on P1's own board once they start their turn
       if (lastSunkOnP1) setLastSunkOnP1(null);
       const k = `${r},${c}`;
-      if (p1.shots.has(k)) return; // ignore repeats
+      if (p1.shots.has(k)) return;
       const res = fire(p1.shots, p2.fleet, { r, c });
       setLastShotP1(k);
       setP1((prev) => ({ ...prev, shots: res.attackerShots }));
@@ -132,57 +157,76 @@ export default function App() {
         setWinner(1);
         setPhase('GAME_OVER');
         setShowConfetti(true);
+        playWin();
         return;
       }
-      let msg = res.result.hit ? 'Hit! ' : 'Miss! ';
       setLog((prev) => [...prev, { attacker: 1, text: `${coordLabel(r,c)} - ${res.result.hit ? 'Hit 💥' : 'Miss 💧'}`, key: `${Date.now()}-p1` }]);
       if (res.result.sunk) {
-        msg += 'You sunk a ship! 🚢 ';
+        // Attacker-side feedback
+        setBannerP1('You sunk a ship! 🚢');
         const sunkShip = res.defenderFleet.find((s) => s.id === res.result.sunk);
         const sizeVal = sunkShip?.size ?? '?';
-        // Align sunk message on the side that was sunk (defender)
         setLog((prev) => [...prev, { attacker: 1, side: 2, text: `Sunk: ${sizeVal} 🚢`, key: `${Date.now()}-p1s` }]);
         setBannerP2('Opponent sunk one of your ships! 🚢');
         playSunk();
-        // Collect coords for sunk ship on opponent's board
         if (sunkShip) {
           const keys = new Set(sunkShip.coords.map((co) => `${co.r},${co.c}`));
-          setSunkOnP2((prev) => {
-            const acc = new Set(prev ?? [] as any);
-            keys.forEach((k) => acc.add(k));
-            return acc;
-          });
+          setSunkOnP2((prev) => { const acc = new Set(prev ?? [] as any); keys.forEach((x) => acc.add(x)); return acc; });
           setSinkingOnP2(keys);
           setLastSunkOnP2(keys);
           setLockUI(true);
           if (res.result.win) {
-            // Skip handoff; finish the game after a brief moment to enjoy the animation
             window.setTimeout(() => {
               setWinner(1);
               setShowConfetti(true);
               setPhase('GAME_OVER');
               setSinkingOnP2(null);
               setLockUI(false);
+              playWin();
             }, 1500);
             return;
           }
-          // Wait for user to trigger handoff; keep jiggle running until then
-          // Message is written for the current (attacking) player here
+          if (mode === 'PVC') {
+            // After sinking animation, briefly think then auto-fire for computer
+            window.setTimeout(() => {
+              setSinkingOnP2(null);
+              setLockUI(true);
+              setBannerP1('Computer is thinking…');
+              window.setTimeout(() => {
+                setPhase('P2_TURN');
+                computerAct();
+              }, 650);
+            }, 1500);
+            return;
+          }
           setPendingHandoff({ next: 'P2_TURN', message: 'You sunk a ship! 🚢' });
           return;
         }
       } else if (res.result.hit) {
+        // Attacker-side feedback
+        setBannerP1('You hit a ship! 💥');
         setBannerP2('Opponent hit a ship! 💥');
         playHit();
       } else {
+        // Attacker-side feedback
+        setBannerP1('You missed. 💧');
         setBannerP2('Opponent missed. 💧');
         playMiss();
       }
-      // Always hand over via explicit swap
-      setLockUI(true);
-      setPendingHandoff({ next: 'P2_TURN', message: res.result.hit ? 'You hit a ship! 💥' : 'You missed. 💧' });
-      // Clear the last-sunk emphasis once the next player starts their action
-      setLastSunkOnP2((prev) => prev); // keep for next view
+      if (mode === 'PVC') {
+        // Briefly show thinking then auto-fire for computer
+        setLockUI(true);
+        setBannerP1('Computer is thinking…');
+        setLastSunkOnP2((prev) => prev);
+        window.setTimeout(() => {
+          setPhase('P2_TURN');
+          computerAct();
+        }, 650);
+      } else {
+        setLockUI(true);
+        setPendingHandoff({ next: 'P2_TURN', message: res.result.hit ? 'You hit a ship! 💥' : 'You missed. 💧' });
+        setLastSunkOnP2((prev) => prev);
+      }
     } else if (phase === 'P2_TURN') {
       if (bannerP2) setBannerP2(null);
       if (lastSunkOnP2) setLastSunkOnP2(null);
@@ -196,12 +240,12 @@ export default function App() {
         setWinner(2);
         setPhase('GAME_OVER');
         setShowConfetti(true);
+        playWin();
         return;
       }
-      let msg = res.result.hit ? 'Hit! ' : 'Miss! ';
       setLog((prev) => [...prev, { attacker: 2, text: `${coordLabel(r,c)} - ${res.result.hit ? 'Hit 💥' : 'Miss 💧'}`, key: `${Date.now()}-p2` }]);
       if (res.result.sunk) {
-        msg += 'You sunk a ship! 🚢 ';
+        setBannerP2('You sunk a ship! 🚢');
         const sunkShip = res.defenderFleet.find((s) => s.id === res.result.sunk);
         const sizeVal = sunkShip?.size ?? '?';
         setLog((prev) => [...prev, { attacker: 2, side: 1, text: `Sunk: ${sizeVal} 🚢`, key: `${Date.now()}-p2s` }]);
@@ -209,11 +253,7 @@ export default function App() {
         playSunk();
         if (sunkShip) {
           const keys = new Set(sunkShip.coords.map((co) => `${co.r},${co.c}`));
-          setSunkOnP1((prev) => {
-            const acc = new Set(prev ?? [] as any);
-            keys.forEach((k) => acc.add(k));
-            return acc;
-          });
+          setSunkOnP1((prev) => { const acc = new Set(prev ?? [] as any); keys.forEach((x) => acc.add(x)); return acc; });
           setSinkingOnP1(keys);
           setLastSunkOnP1(keys);
           setLockUI(true);
@@ -224,6 +264,15 @@ export default function App() {
               setPhase('GAME_OVER');
               setSinkingOnP1(null);
               setLockUI(false);
+              playWin();
+            }, 1500);
+            return;
+          }
+          if (mode === 'PVC') {
+            window.setTimeout(() => {
+              setSinkingOnP1(null);
+              setLockUI(false);
+              setPhase('P1_TURN');
             }, 1500);
             return;
           }
@@ -231,16 +280,89 @@ export default function App() {
           return;
         }
       } else if (res.result.hit) {
+        setBannerP2('You hit a ship! 💥');
         setBannerP1('Opponent hit a ship! 💥');
         playHit();
       } else {
+        setBannerP2('You missed. 💧');
         setBannerP1('Opponent missed. 💧');
         playMiss();
       }
-      setLockUI(true);
-      setPendingHandoff({ next: 'P1_TURN', message: res.result.hit ? 'You hit a ship! 💥' : 'You missed. 💧' });
-      setLastSunkOnP1((prev) => prev);
+      if (mode === 'PVC') {
+        setLockUI(true);
+        window.setTimeout(() => {
+          setLockUI(false);
+          setPhase('P1_TURN');
+        }, 600);
+        setLastSunkOnP1((prev) => prev);
+      } else {
+        setLockUI(true);
+        setPendingHandoff({ next: 'P1_TURN', message: res.result.hit ? 'You hit a ship! 💥' : 'You missed. 💧' });
+        setLastSunkOnP1((prev) => prev);
+      }
     }
+  }
+
+  // Simple computer logic for P2. Triggers only when mode === 'PVC' and phase === 'P2_TURN'.
+  function computerAct() {
+    if (mode !== 'PVC') return;
+    const target = randomNextShot(p2.shots);
+    const k = `${target.r},${target.c}`;
+    if (p2.shots.has(k)) return;
+    const res = fire(p2.shots, p1.fleet, target);
+    setLastShotP2(k);
+    setP2((prev) => ({ ...prev, shots: res.attackerShots }));
+    setP1((prev) => ({ ...prev, fleet: res.defenderFleet }));
+    if (res.result.win && !res.result.sunk) {
+      setWinner(2);
+      setPhase('GAME_OVER');
+      setShowConfetti(true);
+      playWin();
+      return;
+    }
+    setLog((prev) => [...prev, { attacker: 2, text: `${coordLabel(target.r,target.c)} - ${res.result.hit ? 'Hit 💥' : 'Miss 💧'}`, key: `${Date.now()}-p2-ai` }]);
+    if (res.result.sunk) {
+      const sunkShip = res.defenderFleet.find((s) => s.id === res.result.sunk);
+      const sizeVal = sunkShip?.size ?? '?';
+      setLog((prev) => [...prev, { attacker: 2, side: 1, text: `Sunk: ${sizeVal} 🚢`, key: `${Date.now()}-p2s-ai` }]);
+      setBannerP1('Opponent sunk one of your ships! 🚢');
+      playSunk();
+      if (sunkShip) {
+        const keys = new Set(sunkShip.coords.map((co) => `${co.r},${co.c}`));
+        setSunkOnP1((prev) => { const acc = new Set(prev ?? [] as any); keys.forEach((x) => acc.add(x)); return acc; });
+        setSinkingOnP1(keys);
+        setLastSunkOnP1(keys);
+        setLockUI(true);
+        if (res.result.win) {
+          window.setTimeout(() => {
+            setWinner(2);
+            setShowConfetti(true);
+            setPhase('GAME_OVER');
+            setSinkingOnP1(null);
+            setLockUI(false);
+            playWin();
+          }, 1500);
+          return;
+        }
+        window.setTimeout(() => {
+          setSinkingOnP1(null);
+          setLockUI(false);
+          setPhase('P1_TURN');
+        }, 1500);
+        return;
+      }
+    } else if (res.result.hit) {
+      setBannerP1('Opponent hit a ship! 💥');
+      playHit();
+    } else {
+      setBannerP1('Opponent missed. 💧');
+      playMiss();
+    }
+    setLockUI(true);
+    window.setTimeout(() => {
+      setLockUI(false);
+      setPhase('P1_TURN');
+    }, 900);
   }
 
   // Load from localStorage once on mount
@@ -370,6 +492,18 @@ export default function App() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <header className="flex items-center justify-between gap-3" aria-hidden={overlay.shown} style={{ visibility: overlay.shown ? 'hidden' as const : 'visible' }}>
+        <div className="text-sm flex items-center gap-2">
+          <label className="font-medium">Mode:</label>
+          <select
+            className="border rounded px-2 py-1"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as Mode)}
+            disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
+          >
+            <option value="PVP">Two Players</option>
+            <option value="PVC">Vs Computer</option>
+          </select>
+        </div>
         <h1 className="text-3xl font-extrabold">Kids Battleships</h1>
         <div className="flex items-center gap-2">
           {!audioReady && (
@@ -422,7 +556,7 @@ export default function App() {
         />
       )}
 
-      {phase === 'P1_TURN' && (
+      {(phase === 'P1_TURN' || (mode === 'PVC' && phase === 'P2_TURN')) && (
         <PlayView
           currentPlayer={1}
           currentPlayerName={names[1]}
@@ -442,9 +576,9 @@ export default function App() {
           sinkingOnOpponent={sinkingOnP2}
           sinkingOnSelf={sinkingOnP1}
           disabled={lockUI}
-          ctaLabel={pendingHandoff ? 'Swap Players' : null}
-          ctaMessage={pendingHandoff?.message ?? null}
-          onCta={pendingHandoff ? () => { const next = pendingHandoff!.next; setOverlay({ shown: true, message: next === 'P2_TURN' ? `Pass the device to ${names[2] ?? 'Player 2'}` : `Pass the device to ${names[1] ?? 'Player 1'}`, next }); setPendingHandoff(null); } : undefined}
+          ctaLabel={mode === 'PVC' ? null : (pendingHandoff ? 'Swap Players' : null)}
+          ctaMessage={mode === 'PVC' ? null : (pendingHandoff?.message ?? null)}
+          onCta={mode === 'PVC' ? undefined : (pendingHandoff ? () => { const next = pendingHandoff!.next; setOverlay({ shown: true, message: next === 'P2_TURN' ? `Pass the device to ${names[2] ?? 'Player 2'}` : `Pass the device to ${names[1] ?? 'Player 1'}`, next }); setPendingHandoff(null); } : undefined)}
           chat={log.map((e) => ({
             who: e.system ? 'system' : (e.side ? (1 === e.side ? 'me' : 'them') : (e.attacker === 1 ? 'me' : 'them')),
             text: e.text,
@@ -454,7 +588,7 @@ export default function App() {
         />
       )}
 
-      {phase === 'P2_TURN' && (
+      {phase === 'P2_TURN' && mode !== 'PVC' && (
         <PlayView
           currentPlayer={2}
           currentPlayerName={names[2]}
@@ -488,7 +622,7 @@ export default function App() {
 
       {phase === 'GAME_OVER' && (
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">🎉 Player {winner} wins!</h2>
+          <h2 className="text-2xl font-bold">🎉 {(winner && names[winner]) ? names[winner] : `Player ${winner}`} wins!</h2>
           <div className="text-slate-700">Press Restart to play again.</div>
         </div>
       )}
@@ -508,7 +642,7 @@ export default function App() {
         }}
       />
 
-      {phase === 'GAME_OVER' && showConfetti && <Confetti />}
+      {phase === 'GAME_OVER' && showConfetti && <Confetti loop origin="center" />}
     </div>
   );
 }
