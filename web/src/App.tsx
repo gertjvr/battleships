@@ -16,6 +16,7 @@ import {
   coordsFor,
 } from '@app/engine';
 import { playHit, playMiss, playSunk, enableAudio, isAudioEnabled } from './sound';
+import { loadState, saveState, clearState, serializePlayer, deserializePlayer } from './persistence';
 function coordLabel(r: number, c: number): string {
   const letters = ['A','B','C','D','E','F','G','H','I','J'];
   return `${letters[c]}:${r + 1}`;
@@ -241,6 +242,84 @@ export default function App() {
     }
   }
 
+  // Load from localStorage once on mount
+  useEffect(() => {
+    const persisted = loadState();
+    if (!persisted) return;
+    try {
+      setPhase(persisted.phase);
+      setP1(deserializePlayer(persisted.p1));
+      setP2(deserializePlayer(persisted.p2));
+      setP1PlaceIndex(persisted.p1PlaceIndex ?? 0);
+      setP2PlaceIndex(persisted.p2PlaceIndex ?? 0);
+      setOrientation((persisted.orientation as Orientation) ?? 'H');
+      if (persisted.overlay) setOverlay(persisted.overlay);
+      setWinner(persisted.winner ?? null);
+      setNames(persisted.names ?? {});
+      setLog(persisted.log ?? []);
+      setLastShotP1(persisted.lastShotP1 ?? null);
+      setLastShotP2(persisted.lastShotP2 ?? null);
+      setSunkOnP1(persisted.sunkOnP1 ? new Set(persisted.sunkOnP1) : null);
+      setSunkOnP2(persisted.sunkOnP2 ? new Set(persisted.sunkOnP2) : null);
+      setLastSunkOnP1(persisted.lastSunkOnP1 ? new Set(persisted.lastSunkOnP1) : null);
+      setLastSunkOnP2(persisted.lastSunkOnP2 ? new Set(persisted.lastSunkOnP2) : null);
+      setSinkingOnP1(persisted.sinkingOnP1 ? new Set(persisted.sinkingOnP1) : null);
+      setSinkingOnP2(persisted.sinkingOnP2 ? new Set(persisted.sinkingOnP2) : null);
+      setLockUI(!!persisted.lockUI);
+      setPendingHandoff(persisted.pendingHandoff ?? null);
+    } catch {
+      // ignore corrupted state
+    }
+  }, []);
+
+  // Persist on meaningful changes
+  useEffect(() => {
+    const state = {
+      phase,
+      p1: serializePlayer(p1),
+      p2: serializePlayer(p2),
+      p1PlaceIndex,
+      p2PlaceIndex,
+      orientation,
+      overlay,
+      winner,
+      names,
+      log,
+      lastShotP1,
+      lastShotP2,
+      sunkOnP1: sunkOnP1 ? Array.from(sunkOnP1) : null,
+      sunkOnP2: sunkOnP2 ? Array.from(sunkOnP2) : null,
+      lastSunkOnP1: lastSunkOnP1 ? Array.from(lastSunkOnP1) : null,
+      lastSunkOnP2: lastSunkOnP2 ? Array.from(lastSunkOnP2) : null,
+      sinkingOnP1: sinkingOnP1 ? Array.from(sinkingOnP1) : null,
+      sinkingOnP2: sinkingOnP2 ? Array.from(sinkingOnP2) : null,
+      lockUI,
+      pendingHandoff,
+    } as const;
+    saveState(state as any);
+  }, [
+    phase,
+    p1,
+    p2,
+    p1PlaceIndex,
+    p2PlaceIndex,
+    orientation,
+    overlay,
+    winner,
+    names,
+    log,
+    lastShotP1,
+    lastShotP2,
+    sunkOnP1,
+    sunkOnP2,
+    lastSunkOnP1,
+    lastSunkOnP2,
+    sinkingOnP1,
+    sinkingOnP2,
+    lockUI,
+    pendingHandoff,
+  ]);
+
   // Keyboard: Space to rotate during placement phases
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -266,6 +345,17 @@ export default function App() {
     setOverlay({ shown: false, message: '' });
     setWinner(null);
     setLog([]);
+    setLastShotP1(null);
+    setLastShotP2(null);
+    setSunkOnP1(null);
+    setSunkOnP2(null);
+    setLastSunkOnP1(null);
+    setLastSunkOnP2(null);
+    setSinkingOnP1(null);
+    setSinkingOnP2(null);
+    setLockUI(false);
+    setPendingHandoff(null);
+    clearState();
   }
 
   return (
