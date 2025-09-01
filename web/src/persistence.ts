@@ -5,6 +5,7 @@ const STORAGE_KEY = 'kids-battleships:game:v1';
 
 export type Phase = 'P1_PLACE' | 'P2_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 export type Mode = 'PVP' | 'PVC';
+export type Difficulty = 'easy' | 'medium' | 'hard';
 
 type PersistedShip = Omit<Ship, 'hits'> & { hits: string[] };
 type PersistedPlayer = Omit<Player, 'shots' | 'fleet'> & { shots: string[]; fleet: PersistedShip[] };
@@ -31,6 +32,14 @@ export type PersistedState = {
   lockUI?: boolean;
   pendingHandoff?: { next: Phase; message: string } | null;
   mode?: Mode;
+  ai?: {
+    difficulty: Difficulty;
+    mem?: {
+      targetQueue?: string[];
+      cluster?: string[];
+      parity?: 0 | 1;
+    };
+  };
 };
 
 function serializeShip(s: Ship): PersistedShip {

@@ -17,7 +17,8 @@ import {
 } from '@app/engine';
 import { playHit, playMiss, playSunk, playWin, enableAudio, isAudioEnabled } from './sound';
 import { loadState, saveState, clearState, serializePlayer, deserializePlayer, type Mode } from './persistence';
-import { randomPlaceFleet, randomNextShot } from './ai';
+import { randomPlaceFleet, chooseNextShot, emptyAIMemory, updateAIMemory } from './ai';
+import type { Difficulty } from './persistence';
 function coordLabel(r: number, c: number): string {
   const letters = ['A','B','C','D','E','F','G','H','I','J'];
   return `${letters[c]}:${r + 1}`;
@@ -40,16 +41,24 @@ export default function App() {
   const [orientation, setOrientation] = useState<Orientation>('H');
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [mode, setMode] = useState<Mode>('PVP');
+  const [aiDifficulty, setAiDifficulty] = useState<Difficulty>('easy');
+  const [aiMem, setAiMem] = useState(() => emptyAIMemory());
   useEffect(() => {
     const persisted = loadState();
     if (persisted && persisted.mode) setMode(persisted.mode);
+    if (persisted?.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
+    if (persisted?.ai?.mem) setAiMem({
+      targetQueue: persisted.ai.mem.targetQueue ?? [],
+      cluster: persisted.ai.mem.cluster ?? [],
+      parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
+    });
   }, []);
   useEffect(() => {
     const current = loadState();
     if (current) {
-      saveState({ ...current, mode });
+      saveState({ ...current, mode, ai: { difficulty: aiDifficulty, mem: { targetQueue: aiMem.targetQueue, cluster: aiMem.cluster, parity: aiMem.parity } } });
     }
-  }, [mode]);
+  }, [mode, aiDifficulty, aiMem]);
   const [winner, setWinner] = useState<1 | 2 | null>(null);
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [bannerP1, setBannerP1] = useState<string | null>(null);
@@ -303,16 +312,17 @@ export default function App() {
     }
   }
 
-  // Simple computer logic for P2. Triggers only when mode === 'PVC' and phase === 'P2_TURN'.
+  // Computer logic for P2 with difficulty + memory
   function computerAct() {
     if (mode !== 'PVC') return;
-    const target = randomNextShot(p2.shots);
+    const target = chooseNextShot(p2.shots, aiMem, aiDifficulty);
     const k = `${target.r},${target.c}`;
     if (p2.shots.has(k)) return;
     const res = fire(p2.shots, p1.fleet, target);
     setLastShotP2(k);
     setP2((prev) => ({ ...prev, shots: res.attackerShots }));
     setP1((prev) => ({ ...prev, fleet: res.defenderFleet }));
+    setAiMem((prev) => updateAIMemory(prev, aiDifficulty, target, res.result, res.attackerShots));
     if (res.result.win && !res.result.sunk) {
       setWinner(2);
       setPhase('GAME_OVER');
@@ -503,6 +513,21 @@ export default function App() {
             <option value="PVP">Two Players</option>
             <option value="PVC">Vs Computer</option>
           </select>
+          {mode === 'PVC' && (
+            <>
+              <label className="font-medium ml-3">Difficulty:</label>
+              <select
+                className="border rounded px-2 py-1"
+                value={aiDifficulty}
+                onChange={(e) => setAiDifficulty(e.target.value as Difficulty)}
+                disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </>
+          )}
         </div>
         <h1 className="text-3xl font-extrabold">Kids Battleships</h1>
         <div className="flex items-center gap-2">
