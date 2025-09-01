@@ -89,8 +89,36 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
       } else if (mode === 'fire') {
         if (shots?.has(k)) {
           const hit = hasCoord(opponentFleet, coord);
-          if (hit) { cls += ' bg-rose-400 text-white animate-hit'; content = '💥'; }
-          else { cls += ' bg-sky-200 animate-miss'; content = '💧'; }
+          if (hit) {
+            cls += ' bg-rose-400 text-white animate-hit';
+            content = '💥';
+            // Only outline once the ship is sunk (including during sinking animation)
+            const isSunkCell = !!(sunkKeys?.has(k) || lastSunkKeys?.has(k) || sinkingKeys?.has(k));
+            if (isSunkCell) {
+              const s = shipAt(opponentFleet, coord);
+              if (s) {
+                const isSunkSame = (rr: number, cc: number) => {
+                  if (rr < 0 || rr > 9 || cc < 0 || cc > 9) return false;
+                  const nk = `${rr},${cc}`;
+                  if (!(sunkKeys?.has(nk) || lastSunkKeys?.has(nk) || sinkingKeys?.has(nk))) return false;
+                  const ns = shipAt(opponentFleet, { r: rr, c: cc });
+                  return ns?.id === s.id;
+                };
+                const up = isSunkSame(r - 1, c);
+                const right = isSunkSame(r, c + 1);
+                const down = isSunkSame(r + 1, c);
+                const left = isSunkSame(r, c - 1);
+                cls += ' ship-outline';
+                if (!up) cls += ' edge-t';
+                if (!right) cls += ' edge-r';
+                if (!down) cls += ' edge-b';
+                if (!left) cls += ' edge-l';
+              }
+            }
+          } else {
+            cls += ' bg-sky-200 animate-miss';
+            content = '💧';
+          }
         }
         if (highlightKey && shots?.has(k) && highlightKey === k) {
           cls += ' grid-cell-last';
