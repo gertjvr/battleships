@@ -38,6 +38,7 @@ export type PersistedState = {
       targetQueue?: string[];
       cluster?: string[];
       parity?: 0 | 1;
+      sizesLeft?: number[];
     };
   };
 };

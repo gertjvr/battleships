@@ -51,12 +51,13 @@ export default function App() {
       targetQueue: persisted.ai.mem.targetQueue ?? [],
       cluster: persisted.ai.mem.cluster ?? [],
       parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
-    });
+      sizesLeft: (persisted.ai.mem.sizesLeft && persisted.ai.mem.sizesLeft.length > 0) ? persisted.ai.mem.sizesLeft : [...FLEET_SIZES],
+    } as any);
   }, []);
   useEffect(() => {
     const current = loadState();
     if (current) {
-      saveState({ ...current, mode, ai: { difficulty: aiDifficulty, mem: { targetQueue: aiMem.targetQueue, cluster: aiMem.cluster, parity: aiMem.parity } } });
+      saveState({ ...current, mode, ai: { difficulty: aiDifficulty, mem: { targetQueue: aiMem.targetQueue, cluster: aiMem.cluster, parity: (aiMem as any).parity, sizesLeft: (aiMem as any).sizesLeft } } });
     }
   }, [mode, aiDifficulty, aiMem]);
   const [winner, setWinner] = useState<1 | 2 | null>(null);
