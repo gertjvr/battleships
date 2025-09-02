@@ -504,52 +504,67 @@ export default function App() {
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <header className="flex items-center justify-between gap-3" aria-hidden={overlay.shown} style={{ visibility: overlay.shown ? 'hidden' as const : 'visible' }}>
-        <div className="text-sm flex items-center gap-2">
-          <label className="font-medium">Mode:</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={mode}
-            onChange={(e) => setMode(e.target.value as Mode)}
-            disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
-          >
-            <option value="PVP">Two Players</option>
-            <option value="PVC">Vs Computer</option>
-            <option value="ONLINE">Online</option>
-          </select>
-          {mode === 'PVC' && (
-            <>
-              <label className="font-medium ml-3">Difficulty:</label>
-              <select
-                className="border rounded px-2 py-1"
-                value={aiDifficulty}
-                onChange={(e) => setAiDifficulty(e.target.value as Difficulty)}
-                disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </>
-          )}
-        </div>
-        <h1 className="text-3xl font-extrabold">Kids Battleships</h1>
-        <div className="flex items-center gap-2">
-          {!audioReady && (
-            <button
-              className="btn"
-              onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
-              title="Enable sounds"
+        {mode !== 'ONLINE' && (
+          <div className="text-sm flex items-center gap-2">
+            <label className="font-medium">Mode:</label>
+            <select
+              className="border rounded px-2 py-1"
+              value={mode}
+              onChange={(e) => setMode(e.target.value as Mode)}
+              disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
             >
-              Enable Sound
+              <option value="PVP">Two Players</option>
+              <option value="PVC">Vs Computer</option>
+            </select>
+            {mode === 'PVC' && (
+              <>
+                <label className="font-medium ml-3">Difficulty:</label>
+                <select
+                  className="border rounded px-2 py-1"
+                  value={aiDifficulty}
+                  onChange={(e) => setAiDifficulty(e.target.value as Difficulty)}
+                  disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </>
+            )}
+            <button 
+              className="btn ml-3"
+              onClick={() => setMode('ONLINE')}
+              disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
+            >
+              Connect Online
             </button>
-          )}
-          <HelpPopover />
-          <button className="btn" onClick={handleReset}>Restart</button>
-        </div>
+          </div>
+        )}
+        {mode === 'ONLINE' && <div></div>}
+        <h1 className="text-3xl font-extrabold">Kids Battleships{mode === 'ONLINE' ? ' - Online' : ''}</h1>
+        {mode !== 'ONLINE' && (
+          <div className="flex items-center gap-2">
+            {!audioReady && (
+              <button
+                className="btn"
+                onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
+                title="Enable sounds"
+              >
+                Enable Sound
+              </button>
+            )}
+            <HelpPopover />
+            <button className="btn" onClick={handleReset}>Restart</button>
+          </div>
+        )}
+        {mode === 'ONLINE' && <div></div>}
       </header>
 
       {mode === 'ONLINE' ? (
-        <OnlineGameManager onBack={() => setMode('PVP')} />
+        <OnlineGameManager 
+          onBack={() => setMode('PVP')} 
+          initialPlayerName={names[1] || ''} 
+        />
       ) : (
         <>
           {phase === 'P1_PLACE' && (
@@ -677,6 +692,7 @@ export default function App() {
       {phase === 'GAME_OVER' && showConfetti && <Confetti loop origin="center" />}
       </>
       )}
+
     </div>
   );
 }

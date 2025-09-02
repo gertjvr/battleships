@@ -1,11 +1,13 @@
 import { canPlace, fire, allSunk, FLEET_SIZES, placeShip, type Coord, type ShipSize, type Orientation, type Ship, type Player } from '@app/engine';
 
 interface GameState {
-  phase: 'P1_PLACE' | 'P2_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
+  phase: 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
   p1: Player;
   p2: Player;
   p1PlaceIndex: number;
   p2PlaceIndex: number;
+  p1Ready: boolean;
+  p2Ready: boolean;
   orientation: Orientation;
   winner: 1 | 2 | null;
   names: { [key: number]: string };
@@ -13,7 +15,7 @@ interface GameState {
 }
 
 interface ActionPayload {
-  type: 'place' | 'donePlacement' | 'fire' | 'reset' | 'setName';
+  type: 'place' | 'donePlacement' | 'fire' | 'reset' | 'setName' | 'setOrientation' | 'undo';
   player: 1 | 2;
   [key: string]: any;
 }
@@ -167,6 +169,12 @@ export class GameRoom implements DurableObject {
       case 'setName':
         isValid = true; // Allow name setting
         break;
+      case 'setOrientation':
+        isValid = this.validateSetOrientation(payload);
+        break;
+      case 'undo':
+        isValid = this.validateUndo(payload);
+        break;
     }
 
     if (!isValid) {
@@ -179,18 +187,27 @@ export class GameRoom implements DurableObject {
 
     // Apply action and broadcast to all clients with ack
     this.gameState = this.applyAction(this.gameState!, payload);
-    await this.state.storage.put('snapshot', this.serializeState(this.gameState));
+    const snapshot = this.serializeState(this.gameState);
+    await this.state.storage.put('snapshot', snapshot);
+    // Acknowledge action id for idempotency
     this.broadcast({ type: 'action', id, payload, meta: { ack: true } });
+    // Also broadcast updated state so all clients sync to authoritative version
+    this.broadcast({ type: 'state', payload: snapshot });
   }
 
   validatePlacement(payload: any): boolean {
     const { phase } = this.gameState!;
     const { player, start, size, orientation } = payload;
 
-    // Only allow placement during correct phase
-    if ((player === 1 && phase !== 'P1_PLACE') || 
-        (player === 2 && phase !== 'P2_PLACE')) {
+    // Only allow placement during BOTH_PLACE phase
+    if (phase !== 'BOTH_PLACE') {
       return false;
+    }
+
+    // Check if player is already ready
+    const isPlayerReady = player === 1 ? this.gameState!.p1Ready : this.gameState!.p2Ready;
+    if (isPlayerReady) {
+      return false; // Don't allow placing ships after marked as ready
     }
 
     // Get player's fleet and validate using engine function
@@ -214,9 +231,65 @@ export class GameRoom implements DurableObject {
   }
 
   validateDonePlacement(payload: any): boolean {
+    const { phase } = this.gameState!;
+    const { player } = payload;
+
+    // Only allow during placement phase
+    if (phase !== 'BOTH_PLACE') {
+      return false;
+    }
+
+    // Check if player is already ready
+    const isPlayerReady = player === 1 ? this.gameState!.p1Ready : this.gameState!.p2Ready;
+    if (isPlayerReady) {
+      return false; // Already marked as ready
+    }
+
     // Check if all ships are placed for this player using FLEET_SIZES
-    const playerData = payload.player === 1 ? this.gameState!.p1 : this.gameState!.p2;
+    const playerData = player === 1 ? this.gameState!.p1 : this.gameState!.p2;
     return playerData.fleet.length === FLEET_SIZES.length; // All 6 ships placed
+  }
+
+  validateSetOrientation(payload: any): boolean {
+    const { phase } = this.gameState!;
+    const { player } = payload;
+
+    // Only allow during placement phase
+    if (phase !== 'BOTH_PLACE') {
+      return false;
+    }
+
+    // Check if player is already ready
+    const isPlayerReady = player === 1 ? this.gameState!.p1Ready : this.gameState!.p2Ready;
+    if (isPlayerReady) {
+      return false; // Already marked as ready, no more changes allowed
+    }
+
+    return true;
+  }
+
+  validateUndo(payload: any): boolean {
+    const { phase } = this.gameState!;
+    const { player } = payload;
+
+    // Only allow during placement phase
+    if (phase !== 'BOTH_PLACE') {
+      return false;
+    }
+
+    // Check if player is already ready
+    const isPlayerReady = player === 1 ? this.gameState!.p1Ready : this.gameState!.p2Ready;
+    if (isPlayerReady) {
+      return false; // Already marked as ready, no more changes allowed
+    }
+
+    // Check if player has any ships to undo
+    const playerData = player === 1 ? this.gameState!.p1 : this.gameState!.p2;
+    if (playerData.fleet.length === 0) {
+      return false; // No ships to undo
+    }
+
+    return true;
   }
 
   applyAction(state: GameState, payload: ActionPayload): GameState {
@@ -236,24 +309,32 @@ export class GameRoom implements DurableObject {
           newState.p2PlaceIndex++;
         }
 
-        // Check if all ships placed
-        if (newFleet.length === FLEET_SIZES.length) {
-          if (player === 1 && newState.phase === 'P1_PLACE') {
-            newState.phase = 'P2_PLACE';
-          } else if (player === 2 && newState.phase === 'P2_PLACE') {
-            newState.phase = 'P1_TURN';
-          }
-        }
+        // No automatic phase transition - placement is concurrent
         break;
       }
 
       case 'donePlacement': {
         const { player } = payload;
-        if (player === 1 && newState.phase === 'P1_PLACE') {
-          newState.phase = 'P2_PLACE';
-        } else if (player === 2 && newState.phase === 'P2_PLACE') {
-          newState.phase = 'P1_TURN';
+        
+        // Mark player as ready
+        if (player === 1) {
+          newState.p1Ready = true;
+        } else {
+          newState.p2Ready = true;
         }
+
+        // Check if both players are ready
+        if (newState.p1Ready && newState.p2Ready) {
+          newState.phase = 'P1_TURN'; // Start battle with Player 1's turn
+        }
+        
+        // Add log entry for ready status
+        newState.log.push({
+          type: 'playerReady',
+          player,
+          message: `Player ${player} is ready!`
+        });
+        
         break;
       }
 
@@ -301,6 +382,26 @@ export class GameRoom implements DurableObject {
         newState.names = { ...newState.names, [player]: name };
         break;
       }
+
+      case 'setOrientation': {
+        const { orientation } = payload;
+        newState.orientation = orientation;
+        break;
+      }
+
+      case 'undo': {
+        const { player } = payload;
+        
+        // Remove the last ship from the player's fleet
+        if (player === 1) {
+          newState.p1 = { ...newState.p1, fleet: newState.p1.fleet.slice(0, -1) };
+          newState.p1PlaceIndex = Math.max(0, newState.p1PlaceIndex - 1);
+        } else {
+          newState.p2 = { ...newState.p2, fleet: newState.p2.fleet.slice(0, -1) };
+          newState.p2PlaceIndex = Math.max(0, newState.p2PlaceIndex - 1);
+        }
+        break;
+      }
     }
 
     return newState;
@@ -320,11 +421,13 @@ export class GameRoom implements DurableObject {
 
   createInitialState(): GameState {
     return {
-      phase: 'P1_PLACE',
+      phase: 'BOTH_PLACE',
       p1: { fleet: [], shots: new Set() },
       p2: { fleet: [], shots: new Set() },
       p1PlaceIndex: 0,
       p2PlaceIndex: 0,
+      p1Ready: false,
+      p2Ready: false,
       orientation: 'H',
       winner: null,
       names: {},

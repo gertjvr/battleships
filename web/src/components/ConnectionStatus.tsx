@@ -5,9 +5,12 @@ interface ConnectionStatusProps {
   player: 1 | 2 | null;
   roomCode: string;
   error: string | null;
+  p1Ready?: boolean;
+  p2Ready?: boolean;
+  playerNames?: { [key: number]: string };
 }
 
-export default function ConnectionStatus({ status, player, roomCode, error }: ConnectionStatusProps) {
+export default function ConnectionStatus({ status, player, roomCode, error, p1Ready, p2Ready, playerNames }: ConnectionStatusProps) {
   const getStatusText = () => {
     switch (status) {
       case 'connecting':
@@ -22,21 +25,19 @@ export default function ConnectionStatus({ status, player, roomCode, error }: Co
   const getStatusClass = () => {
     switch (status) {
       case 'connecting':
-        return 'status-connecting';
+        return 'text-yellow-600 bg-yellow-100';
       case 'connected':
-        return 'status-connected';
+        return 'text-green-600 bg-green-100';
       case 'disconnected':
-        return 'status-disconnected';
+        return 'text-red-600 bg-red-100';
     }
   };
 
   return (
-    <div className={`connection-status ${getStatusClass()}`}>
-      <div className="status-indicator"></div>
-      <div className="status-info">
-        <div className="status-text">{getStatusText()}</div>
-        <div className="room-code">Room: {roomCode}</div>
-      </div>
+    <div className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-2 ${getStatusClass()}`}>
+      <div className="w-2 h-2 rounded-full bg-current"></div>
+      <div className="status-text">{getStatusText()}</div>
+      <div className="text-gray-500">({roomCode})</div>
     </div>
   );
 }

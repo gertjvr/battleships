@@ -22,7 +22,6 @@ interface WebSocketHook {
 }
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8787';
-const MOCK_MODE = import.meta.env.VITE_MOCK_WS === 'true';
 
 export function useWebSocket(room: string): WebSocketHook {
   const [connectionState, setConnectionState] = useState<ConnectionState>({
@@ -53,21 +52,24 @@ export function useWebSocket(room: string): WebSocketHook {
       reconnectAttempts.current = 0;
       setConnectionState(prev => ({ ...prev, status: 'connected', error: null }));
       
-      // Send join message
+      // Send join message (get sessionToken from localStorage directly to avoid dependency)
+      const sessionToken = localStorage.getItem(`kids-battleships:session:${room}`);
       websocket.send(JSON.stringify({
         type: 'join',
-        payload: { room, sessionToken: connectionState.sessionToken }
+        payload: { room, sessionToken }
       }));
     };
     
     websocket.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
+        console.log('🔧 Client received message:', message);
         setLastMessage(message);
         
         // Handle specific message types
         switch (message.type) {
           case 'state':
+            console.log('🔧 Client handling state message:', message.meta);
             // Save session token on first connection
             if (message.meta?.sessionToken && message.meta.sessionToken !== connectionState.sessionToken) {
               localStorage.setItem(`kids-battleships:session:${room}`, message.meta.sessionToken);
@@ -76,6 +78,7 @@ export function useWebSocket(room: string): WebSocketHook {
                 sessionToken: message.meta.sessionToken,
                 player: message.meta.player
               }));
+              console.log('🔧 Client updated connection state - player:', message.meta.player);
             }
             break;
             
@@ -124,7 +127,7 @@ export function useWebSocket(room: string): WebSocketHook {
     };
     
     ws.current = websocket;
-  }, [room, connectionState.sessionToken]);
+  }, [room]);
 
   const sendMessage = useCallback((message: any) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -154,7 +157,7 @@ export function useWebSocket(room: string): WebSocketHook {
 
   // Connect on mount and room change
   useEffect(() => {
-    if (!MOCK_MODE && room) {
+    if (room) {
       connect();
     }
     

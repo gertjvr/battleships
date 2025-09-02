@@ -32,7 +32,7 @@ export default function PlayView({ currentPlayer, currentPlayerName, meLabel, th
   const isComputer = !!(currentPlayerName && /computer/i.test(currentPlayerName));
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{currentPlayerName ? currentPlayerName : `Player ${currentPlayer}`}: Take Your Shot</h1>
+      <h1 className="text-2xl font-bold">{currentPlayerName ? currentPlayerName : `Player ${currentPlayer}`}</h1>
       {(() => {
         const has = !!banner;
         const thinking = has && /computer is thinking/i.test(banner!);

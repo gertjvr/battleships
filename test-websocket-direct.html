@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct WebSocket Test</title>
+</head>
+<body>
+    <h1>Direct WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const statusDiv = document.getElementById('status');
+        
+        function log(message) {
+            console.log(message);
+            messagesDiv.innerHTML += '<div>' + message + '</div>';
+        }
+        
+        const ws = new WebSocket('ws://127.0.0.1:8787/ws?room=TEST123');
+        
+        ws.onopen = function() {
+            statusDiv.textContent = 'Connected!';
+            log('WebSocket connected');
+            
+            // Send join message
+            const joinMsg = {
+                type: 'join',
+                payload: { room: 'TEST123', sessionToken: null }
+            };
+            ws.send(JSON.stringify(joinMsg));
+            log('Sent join message: ' + JSON.stringify(joinMsg));
+        };
+        
+        ws.onmessage = function(event) {
+            log('Received: ' + event.data);
+            const data = JSON.parse(event.data);
+            if (data.type === 'state' && data.meta) {
+                log('Assigned to player: ' + data.meta.player);
+                log('Session token: ' + data.meta.sessionToken);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            statusDiv.textContent = 'Error: ' + error;
+            log('WebSocket error: ' + error);
+        };
+        
+        ws.onclose = function() {
+            statusDiv.textContent = 'Disconnected';
+            log('WebSocket closed');
+        };
+    </script>
+</body>
+</html>

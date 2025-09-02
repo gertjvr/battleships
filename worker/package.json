@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --local --port 8787",
     "deploy": "wrangler deploy",
     "build": "tsc"
   },
@@ -14,6 +14,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240909.0",
     "typescript": "^5.9.2",
-    "wrangler": "^3.78.12"
+    "wrangler": "^4.33.2"
   }
 }

@@ -87,3 +87,5 @@ pnpm -C web dev
 
 ## Testing
 No testing framework currently configured. When adding tests, use Vitest for both engine and web packages with appropriate scripts in individual `package.json` files.
+- use pnpm commands
+- assume the dev server is running on port 5173

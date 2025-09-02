@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from './useWebSocket';
-import { enableMockWebSocket } from './mockWebSocketServer';
 import RoomSetup from '../components/RoomSetup';
 import ConnectionStatus from '../components/ConnectionStatus';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
+import HelpPopover from '../components/HelpPopover';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
+import { canPlace, coordsFor } from '@app/engine';
+import { enableAudio, isAudioEnabled, playWin } from '../sound';
 
-// Enable mock WebSocket for local development
-if (import.meta.env.VITE_MOCK_WS === 'true') {
-  enableMockWebSocket();
-}
-
-type Phase = 'P1_PLACE' | 'P2_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
+type Phase = 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 
 interface GameState {
   phase: Phase;
@@ -22,6 +19,8 @@ interface GameState {
   p2: Player;
   p1PlaceIndex: number;
   p2PlaceIndex: number;
+  p1Ready: boolean;
+  p2Ready: boolean;
   orientation: Orientation;
   winner: 1 | 2 | null;
   names: { [key: number]: string };
@@ -30,16 +29,31 @@ interface GameState {
 
 interface OnlineGameManagerProps {
   onBack: () => void;
+  initialPlayerName: string;
 }
 
-export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
+export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineGameManagerProps) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
+  const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
+  const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
 
   const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '');
+
+  // Handle game over effects
+  useEffect(() => {
+    if (gameState?.phase === 'GAME_OVER' && gameState.winner) {
+      const didIWin = gameState.winner === myPlayer;
+      if (didIWin) {
+        setShowConfetti(true);
+        playWin();
+      }
+    }
+  }, [gameState?.phase, gameState?.winner, myPlayer]);
 
   // Handle incoming WebSocket messages
   useEffect(() => {
@@ -47,6 +61,7 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
 
     switch (lastMessage.type) {
       case 'state':
+        console.log('🔧 OnlineGameManager received state message:', lastMessage);
         // Deserialize the game state
         const state = lastMessage.payload;
         if (state) {
@@ -67,8 +82,13 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
               shots: new Set(state.p2.shots)
             }
           };
+          console.log('🔧 Setting game state:', deserializedState);
+          console.log('🔧 Setting player to:', lastMessage.meta?.player);
           setGameState(deserializedState);
-          setMyPlayer(lastMessage.meta?.player || null);
+          // Only update player if meta.player is provided (don't override with undefined)
+          if (lastMessage.meta?.player !== undefined) {
+            setMyPlayer(lastMessage.meta.player);
+          }
         }
         break;
 
@@ -90,7 +110,19 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
         }
         break;
     }
-  }, [lastMessage, gameState]);
+  }, [lastMessage]);
+
+  // Send player name once connected, with unique name for each player
+  useEffect(() => {
+    if (connectionState.status === 'connected' && myPlayer) {
+      const finalName = playerName.trim() || `Player ${myPlayer}`;
+      sendAction({
+        type: 'setName',
+        player: myPlayer,
+        name: finalName
+      });
+    }
+  }, [connectionState.status, myPlayer, sendAction]); // Removed playerName from dependencies to send only once
 
   // Handle room creation/joining
   const handleCreateRoom = useCallback((code: string) => {
@@ -105,10 +137,11 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
   const handlePlace = useCallback((c: Coord) => {
     if (!myPlayer || !gameState || connectionState.status !== 'connected') return;
     
-    const isMyTurn = (myPlayer === 1 && gameState.phase === 'P1_PLACE') || 
-                     (myPlayer === 2 && gameState.phase === 'P2_PLACE');
+    // Only allow placement during BOTH_PLACE phase and if not already ready
+    if (gameState.phase !== 'BOTH_PLACE') return;
     
-    if (!isMyTurn) return;
+    const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
+    if (amIReady) return; // Already ready, no more placing
 
     const currentPlayer = myPlayer === 1 ? gameState.p1 : gameState.p2;
     const placeIndex = myPlayer === 1 ? gameState.p1PlaceIndex : gameState.p2PlaceIndex;
@@ -142,15 +175,72 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
   }, [myPlayer, gameState, connectionState.status, sendAction]);
 
   const handleOrientationToggle = useCallback(() => {
-    // For multiplayer, orientation is shared state, so we might not allow this
-    // Or we could send an action to update orientation
-    // For now, keeping it local since it's just UI feedback
-  }, []);
+    if (!myPlayer || !gameState || connectionState.status !== 'connected') return;
+    
+    // Only allow orientation toggle during BOTH_PLACE phase and if not already ready
+    if (gameState.phase !== 'BOTH_PLACE') return;
+    
+    const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
+    if (amIReady) return; // Already ready, no more changes
+
+    // Toggle orientation in shared game state
+    const newOrientation = gameState.orientation === 'H' ? 'V' : 'H';
+    sendAction({
+      type: 'setOrientation',
+      player: myPlayer,
+      orientation: newOrientation
+    });
+  }, [myPlayer, gameState, connectionState.status, sendAction]);
+
+  const handleHover = useCallback((c: Coord | null) => {
+    if (!myPlayer || !gameState || connectionState.status !== 'connected') {
+      setPreview(null);
+      return;
+    }
+    
+    // Only show preview during BOTH_PLACE phase and if not ready
+    if (gameState.phase !== 'BOTH_PLACE') {
+      setPreview(null);
+      return;
+    }
+    
+    const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
+    if (amIReady || !c) {
+      setPreview(null);
+      return;
+    }
+
+    const currentPlayer = myPlayer === 1 ? gameState.p1 : gameState.p2;
+    const placeIndex = myPlayer === 1 ? gameState.p1PlaceIndex : gameState.p2PlaceIndex;
+    const nextSize = [5, 4, 3, 3, 2, 2][placeIndex] as ShipSize;
+
+    if (!nextSize) {
+      setPreview(null);
+      return;
+    }
+
+    const coords = coordsFor(c, nextSize, gameState.orientation);
+    const valid = canPlace(currentPlayer.fleet, c, nextSize, gameState.orientation);
+    setPreview({ coords, valid });
+  }, [myPlayer, gameState, connectionState.status]);
 
   const handleUndo = useCallback(() => {
-    // Undo might not be supported in multiplayer or would need server action
-    console.log('Undo not supported in online mode');
-  }, []);
+    if (!myPlayer || !gameState || connectionState.status !== 'connected') return;
+    
+    // Only allow undo during BOTH_PLACE phase and if not ready
+    if (gameState.phase !== 'BOTH_PLACE') return;
+    
+    const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
+    if (amIReady) return; // Already ready, no more changes
+
+    const currentPlayer = myPlayer === 1 ? gameState.p1 : gameState.p2;
+    if (currentPlayer.fleet.length === 0) return; // No ships to undo
+
+    sendAction({
+      type: 'undo',
+      player: myPlayer
+    });
+  }, [myPlayer, gameState, connectionState.status, sendAction]);
 
   const handleDonePlacement = useCallback(() => {
     if (!myPlayer || !gameState || connectionState.status !== 'connected') return;
@@ -162,8 +252,11 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
   }, [myPlayer, gameState, connectionState.status, sendAction]);
 
   const handleReset = useCallback(() => {
-    if (connectionState.status !== 'connected') return;
+    if (connectionState.status !== 'connected') {
+      return; // Do nothing when disconnected - restart doesn't make sense
+    }
     
+    // TODO: Server needs to handle 'reset' action type
     sendAction({
       type: 'reset'
     });
@@ -177,29 +270,51 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
   if (!roomCode) {
     return (
       <div className="online-game">
-        <div className="header">
-          <button onClick={onBack} className="back-button">← Back</button>
-          <h2>Online Battleships</h2>
-        </div>
-        <RoomSetup onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />
+        <RoomSetup 
+          onCreateRoom={handleCreateRoom} 
+          onJoinRoom={handleJoinRoom} 
+        />
       </div>
     );
   }
+
+  console.log('🔧 OnlineGameManager render - gameState:', gameState, 'myPlayer:', myPlayer, 'connectionStatus:', connectionState.status);
 
   // Show loading/connecting state
   if (!gameState || connectionState.status !== 'connected') {
     return (
       <div className="online-game">
-        <div className="header">
-          <button onClick={onBack} className="back-button">← Back</button>
-          <h2>Online Battleships</h2>
+        <div className="flex items-center justify-between mb-4">
+          <ConnectionStatus 
+            status={connectionState.status}
+            player={myPlayer}
+            roomCode={roomCode}
+            error={connectionState.error}
+            p1Ready={gameState?.p1Ready}
+            p2Ready={gameState?.p2Ready}
+            playerNames={gameState?.names}
+          />
+          <div className="flex gap-2">
+            {connectionState.status === 'disconnected' && (
+              <button 
+                className="btn" 
+                onClick={onBack}
+                title="Return to offline mode"
+              >
+                Back to Offline
+              </button>
+            )}
+            {connectionState.status === 'connected' && (
+              <button 
+                className="btn" 
+                onClick={handleReset}
+                title="Restart the game"
+              >
+                Restart
+              </button>
+            )}
+          </div>
         </div>
-        <ConnectionStatus 
-          status={connectionState.status}
-          player={myPlayer}
-          roomCode={roomCode}
-          error={connectionState.error}
-        />
         {connectionState.status === 'connected' && myPlayer === 1 && (
           <div className="waiting">
             <p>Waiting for another player to join...</p>
@@ -211,65 +326,114 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
   }
 
   // Check if it's my turn for UI restrictions
-  const isMyTurn = myPlayer === 1 
-    ? ['P1_PLACE', 'P1_TURN'].includes(gameState.phase)
-    : ['P2_PLACE', 'P2_TURN'].includes(gameState.phase);
+  const isMyTurn = gameState.phase === 'BOTH_PLACE' ? 
+    true : // Both players can act during BOTH_PLACE
+    (myPlayer === 1 ? gameState.phase === 'P1_TURN' : gameState.phase === 'P2_TURN');
 
-  const isPlacementPhase = ['P1_PLACE', 'P2_PLACE'].includes(gameState.phase);
+  const isPlacementPhase = gameState.phase === 'BOTH_PLACE';
+  
+  // Check if I'm ready during placement
+  const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
+  const isOpponentReady = myPlayer === 1 ? gameState.p2Ready : gameState.p1Ready;
+
 
   return (
     <div className="online-game">
-      <div className="header">
-        <button onClick={onBack} className="back-button">← Back</button>
-        <h2>Online Battleships</h2>
-        <ConnectionStatus 
-          status={connectionState.status}
-          player={myPlayer}
-          roomCode={roomCode}
-          error={connectionState.error}
-        />
+      {/* Connection controls */}
+      <div className="flex items-center justify-end gap-2 mb-6">
+        {!audioReady && (
+          <button
+            className="btn"
+            onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
+            title="Enable sounds"
+          >
+            Enable Sound
+          </button>
+        )}
+        <HelpPopover />
+        <button 
+          className="btn" 
+          onClick={onBack}
+          title="Return to offline mode"
+        >
+          Back to Offline
+        </button>
       </div>
 
-      {isPlacementPhase ? (
-        <PlacementView
-          phase={gameState.phase}
-          p1={gameState.p1}
-          p2={gameState.p2}
-          p1PlaceIndex={gameState.p1PlaceIndex}
-          p2PlaceIndex={gameState.p2PlaceIndex}
-          orientation={gameState.orientation}
-          onPlace={handlePlace}
-          onHover={() => {}} // Simplified for now
-          onUndo={handleUndo}
-          onOrientationToggle={handleOrientationToggle}
-          onDonePlacement={handleDonePlacement}
-          preview={null}
-          disabled={!isMyTurn || connectionState.status !== 'connected'}
-          mode="ONLINE"
-          names={gameState.names}
-          myPlayer={myPlayer}
-        />
+      {gameState.phase === 'GAME_OVER' && gameState.winner ? (
+        /* Game Over Screen */
+        <div className="text-center space-y-6">
+          {gameState.winner === myPlayer ? (
+            <div>
+              <h2 className="text-4xl font-bold text-green-600 mb-2">🎉 You Win! 🎉</h2>
+              <p className="text-lg text-green-700">Congratulations! You sunk all of your opponent's ships!</p>
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-4xl font-bold text-red-600 mb-2">💀 You Lost 💀</h2>
+              <p className="text-lg text-red-700">
+                {gameState.names[gameState.winner] || `Player ${gameState.winner}`} sunk all your ships!
+              </p>
+            </div>
+          )}
+          <div className="text-slate-600">
+            Use "Back to Offline" to return to the main menu and play again.
+          </div>
+        </div>
+      ) : isPlacementPhase ? (
+        <div>
+          {/* Ready Status Messages */}
+          {amIReady && (
+            <div className="bg-green-100 text-green-900 rounded-md px-4 py-3 mb-4">
+              ✅ You are ready! {isOpponentReady ? 'Starting battle...' : 'Waiting for opponent to finish placing ships...'}
+            </div>
+          )}
+          {!amIReady && isOpponentReady && (
+            <div className="bg-blue-100 text-blue-900 rounded-md px-4 py-3 mb-4">
+              🎯 {gameState.names[myPlayer === 1 ? 2 : 1] || `Player ${myPlayer === 1 ? 2 : 1}`} is ready! Finish placing your ships to start the battle.
+            </div>
+          )}
+          
+          <PlacementView
+            playerIndex={myPlayer || 1}
+            playerName={gameState.names[myPlayer || 1]}
+            onNameChange={(name) => {
+              if (myPlayer && !amIReady) { // Only allow name change if not ready
+                sendAction({
+                  type: 'setName',
+                  player: myPlayer,
+                  name: name
+                });
+              }
+            }}
+            fleet={myPlayer === 1 ? gameState.p1.fleet : gameState.p2.fleet}
+            nextSize={!amIReady ? (() => {
+              const placeIndex = myPlayer === 1 ? gameState.p1PlaceIndex : gameState.p2PlaceIndex;
+              return [5, 4, 3, 3, 2, 2][placeIndex] as ShipSize | undefined;
+            })() : undefined}
+            orientation={gameState.orientation}
+            onRotate={handleOrientationToggle}
+            onPlace={handlePlace}
+            onHover={handleHover}
+            onUndo={handleUndo}
+            onDone={handleDonePlacement}
+            previewCoords={preview?.coords}
+            previewValid={preview?.valid}
+          />
+        </div>
       ) : (
         <PlayView
-          phase={gameState.phase}
-          p1={gameState.p1}
-          p2={gameState.p2}
-          onFire={handleFire}
-          onReset={handleReset}
-          winner={gameState.winner}
-          lastShotP1={null}
-          lastShotP2={null}
-          sunkOnP1={null}
-          sunkOnP2={null}
-          lastSunkOnP1={null}
-          lastSunkOnP2={null}
-          sinkingOnP1={null}
-          sinkingOnP2={null}
-          mode="ONLINE"
-          names={gameState.names}
-          log={[]} // Simplified for now
-          myPlayer={myPlayer}
+          currentPlayer={myPlayer || 1}
+          currentPlayerName={gameState.names[myPlayer || 1]}
+          meLabel={gameState.names[myPlayer || 1]?.charAt(0)?.toUpperCase() || `P${myPlayer || 1}`}
+          themLabel={gameState.names[myPlayer === 1 ? 2 : 1]?.charAt(0)?.toUpperCase() || `P${myPlayer === 1 ? 2 : 1}`}
+          opponentFleet={myPlayer === 1 ? gameState.p2.fleet : gameState.p1.fleet}
+          attackerShots={myPlayer === 1 ? gameState.p1.shots : gameState.p2.shots}
+          onFire={(r, c) => handleFire({ r, c })}
+          ownFleet={myPlayer === 1 ? gameState.p1.fleet : gameState.p2.fleet}
+          opponentShots={myPlayer === 1 ? gameState.p2.shots : gameState.p1.shots}
           disabled={!isMyTurn || connectionState.status !== 'connected'}
+          banner={isMyTurn ? "Take your shot! 🎯" : `Waiting for ${gameState.names[gameState.phase === 'P1_TURN' ? 1 : 2] || `Player ${gameState.phase === 'P1_TURN' ? 1 : 2}`}...`}
         />
       )}
 
@@ -281,6 +445,19 @@ export default function OnlineGameManager({ onBack }: OnlineGameManagerProps) {
       )}
 
       {showConfetti && <Confetti />}
+      
+      {/* Footer connection status */}
+      <div className="fixed bottom-4 left-4">
+        <ConnectionStatus 
+          status={connectionState.status}
+          player={myPlayer}
+          roomCode={roomCode || ''}
+          error={connectionState.error}
+          p1Ready={gameState?.p1Ready}
+          p2Ready={gameState?.p2Ready}
+          playerNames={gameState?.names}
+        />
+      </div>
     </div>
   );
 }
