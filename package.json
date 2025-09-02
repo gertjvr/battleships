@@ -5,12 +5,17 @@
   "packageManager": "pnpm@9.7.0",
   "workspaces": [
     "web",
-    "engine"
+    "engine",
+    "worker"
   ],
   "scripts": {
-    "dev": "pnpm -C web dev",
+    "dev": "concurrently \"pnpm -C worker dev\" \"pnpm -C web dev\"",
     "build": "pnpm -C engine build && pnpm -C web build",
     "preview": "pnpm -C web preview"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "concurrently": "^9.2.1",
+    "playwright": "^1.55.0"
   }
 }
-
