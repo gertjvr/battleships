@@ -21,7 +21,7 @@ interface MockRoom {
 }
 
 class MockWebSocketServer {
-  private rooms = new Map<string, MockRoom>();
+  rooms = new Map<string, MockRoom>();
   
   createRoom(roomId: string): MockRoom {
     const room: MockRoom = {
@@ -43,10 +43,10 @@ class MockWebSocketServer {
         const msg = JSON.parse(event.data);
         this.handleMessage(room, ws, msg);
       } catch (error) {
-        ws.send(JSON.stringify({ 
+        this.sendToConnection(ws, { 
           type: 'error', 
           payload: { code: 'BAD_MESSAGE', message: 'Invalid message format' } 
-        }));
+        });
       }
     };
 
@@ -61,6 +61,22 @@ class MockWebSocketServer {
         }, 30000);
       }
     };
+  }
+  
+  handleMessageForConnection(roomId: string, ws: any, msg: any) {
+    const room = this.rooms.get(roomId);
+    if (room) {
+      this.handleMessage(room, ws, msg);
+    }
+  }
+  
+  sendToConnection(ws: any, message: any) {
+    const data = JSON.stringify(message);
+    if (ws.mockReceive) {
+      ws.mockReceive(data);
+    } else if (ws.send) {
+      ws.send(data);
+    }
   }
 
   handleMessage(room: MockRoom, ws: WebSocket, msg: any) {
@@ -77,7 +93,7 @@ class MockWebSocketServer {
     }
   }
 
-  handleJoin(room: MockRoom, ws: WebSocket, payload: any) {
+  handleJoin(room: MockRoom, ws: any, payload: any) {
     let player: number;
     let sessionToken = payload.sessionToken;
 
@@ -90,10 +106,10 @@ class MockWebSocketServer {
       } else if (!assignedPlayers.has(2)) {
         player = 2;
       } else {
-        ws.send(JSON.stringify({ 
+        this.sendToConnection(ws, { 
           type: 'error', 
           payload: { code: 'ROOM_FULL', message: 'Room full' } 
-        }));
+        });
         return;
       }
 
@@ -103,23 +119,23 @@ class MockWebSocketServer {
 
     room.sessions.set(ws, sessionToken);
 
-    ws.send(JSON.stringify({
+    this.sendToConnection(ws, {
       type: 'state',
       payload: this.serializeState(room.gameState),
       meta: { player, sessionToken }
-    }));
+    });
   }
 
-  handleAction(room: MockRoom, ws: WebSocket, msg: any) {
+  handleAction(room: MockRoom, ws: any, msg: any) {
     const { payload, id } = msg;
     const sessionToken = room.sessions.get(ws);
     const player = sessionToken ? room.playerSessions.get(sessionToken) : null;
 
     if (!player || payload.player !== player) {
-      ws.send(JSON.stringify({ 
+      this.sendToConnection(ws, { 
         type: 'error', 
         payload: { code: 'INVALID_PLAYER', message: 'Action not allowed for this player' } 
-      }));
+      });
       return;
     }
 
@@ -203,10 +219,9 @@ class MockWebSocketServer {
   }
 
   broadcast(room: MockRoom, message: any) {
-    const data = JSON.stringify(message);
     for (const ws of room.connections) {
       try {
-        ws.send(data);
+        this.sendToConnection(ws, message);
       } catch (error) {
         room.connections.delete(ws);
       }
@@ -254,6 +269,7 @@ export function enableMockWebSocket() {
     window.WebSocket = class MockWebSocket extends EventTarget {
       readyState = WebSocket.CONNECTING;
       url: string;
+      private mockWs: any = null;
       
       static CONNECTING = 0;
       static OPEN = 1;
@@ -272,14 +288,19 @@ export function enableMockWebSocket() {
           setTimeout(() => {
             this.readyState = WebSocket.CLOSED;
             this.dispatchEvent(new Event('error'));
+            if (this.onerror) this.onerror(new Event('error'));
           }, 0);
           return;
         }
+        
+        // Store reference for message handling
+        this.mockWs = this;
         
         // Simulate connection delay
         setTimeout(() => {
           this.readyState = WebSocket.OPEN;
           this.dispatchEvent(new Event('open'));
+          if (this.onopen) this.onopen(new Event('open'));
           mockServer.handleConnection(room, this as any);
         }, 100);
       }
@@ -289,10 +310,19 @@ export function enableMockWebSocket() {
           throw new Error('WebSocket is not open');
         }
         
-        setTimeout(() => {
-          const event = new MessageEvent('message', { data });
-          this.dispatchEvent(event);
-        }, 0);
+        // Extract room from URL and handle message
+        const urlObj = new URL(this.url, 'ws://localhost');
+        const room = urlObj.searchParams.get('room');
+        if (room) {
+          setTimeout(() => {
+            try {
+              const msg = JSON.parse(data);
+              mockServer.handleMessageForConnection(room, this as any, msg);
+            } catch (error) {
+              console.error('Mock WebSocket parse error:', error);
+            }
+          }, 10);
+        }
       }
       
       close() {
@@ -300,7 +330,9 @@ export function enableMockWebSocket() {
           this.readyState = WebSocket.CLOSING;
           setTimeout(() => {
             this.readyState = WebSocket.CLOSED;
-            this.dispatchEvent(new Event('close'));
+            const closeEvent = new Event('close');
+            this.dispatchEvent(closeEvent);
+            if (this.onclose) this.onclose(closeEvent);
           }, 0);
         }
       }
@@ -313,6 +345,13 @@ export function enableMockWebSocket() {
       
       addEventListener(type: string, listener: EventListener) {
         super.addEventListener(type, listener);
+      }
+      
+      // Mock method to simulate receiving a message
+      mockReceive(data: string) {
+        const event = new MessageEvent('message', { data });
+        this.dispatchEvent(event);
+        if (this.onmessage) this.onmessage(event);
       }
     } as any;
     
