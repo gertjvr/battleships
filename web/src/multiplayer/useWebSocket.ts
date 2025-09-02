@@ -1,0 +1,186 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+interface WebSocketMessage {
+  type: 'state' | 'action' | 'error' | 'pong';
+  payload?: any;
+  meta?: any;
+  id?: string;
+}
+
+interface ConnectionState {
+  status: 'disconnected' | 'connecting' | 'connected';
+  player: 1 | 2 | null;
+  sessionToken: string | null;
+  error: string | null;
+}
+
+interface WebSocketHook {
+  connectionState: ConnectionState;
+  sendMessage: (message: any) => void;
+  sendAction: (action: any) => void;
+  lastMessage: WebSocketMessage | null;
+}
+
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8787';
+const MOCK_MODE = import.meta.env.VITE_MOCK_WS === 'true';
+
+export function useWebSocket(room: string): WebSocketHook {
+  const [connectionState, setConnectionState] = useState<ConnectionState>({
+    status: 'disconnected',
+    player: null,
+    sessionToken: localStorage.getItem(`kids-battleships:session:${room}`),
+    error: null
+  });
+  
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
+  const ws = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
+  const pendingActions = useRef(new Map<string, any>());
+
+  const connect = useCallback(() => {
+    if (ws.current?.readyState === WebSocket.OPEN || ws.current?.readyState === WebSocket.CONNECTING) {
+      return;
+    }
+
+    setConnectionState(prev => ({ ...prev, status: 'connecting', error: null }));
+    
+    const websocket = new WebSocket(`${WS_URL}/ws?room=${room}`);
+    
+    websocket.onopen = () => {
+      console.log('WebSocket connected');
+      reconnectAttempts.current = 0;
+      setConnectionState(prev => ({ ...prev, status: 'connected', error: null }));
+      
+      // Send join message
+      websocket.send(JSON.stringify({
+        type: 'join',
+        payload: { room, sessionToken: connectionState.sessionToken }
+      }));
+    };
+    
+    websocket.onmessage = (event) => {
+      try {
+        const message: WebSocketMessage = JSON.parse(event.data);
+        setLastMessage(message);
+        
+        // Handle specific message types
+        switch (message.type) {
+          case 'state':
+            // Save session token on first connection
+            if (message.meta?.sessionToken && message.meta.sessionToken !== connectionState.sessionToken) {
+              localStorage.setItem(`kids-battleships:session:${room}`, message.meta.sessionToken);
+              setConnectionState(prev => ({
+                ...prev,
+                sessionToken: message.meta.sessionToken,
+                player: message.meta.player
+              }));
+            }
+            break;
+            
+          case 'action':
+            // Handle action acknowledgments
+            if (message.id && message.meta?.ack) {
+              pendingActions.current.delete(message.id);
+            }
+            break;
+            
+          case 'error':
+            setConnectionState(prev => ({
+              ...prev,
+              error: message.payload?.message || 'Unknown error'
+            }));
+            break;
+        }
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
+      }
+    };
+    
+    websocket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setConnectionState(prev => ({ 
+        ...prev, 
+        status: 'disconnected', 
+        error: 'Connection failed' 
+      }));
+    };
+    
+    websocket.onclose = () => {
+      console.log('WebSocket disconnected');
+      setConnectionState(prev => ({ ...prev, status: 'disconnected' }));
+      
+      // Auto-reconnect with exponential backoff
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        reconnectAttempts.current++;
+        
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log(`Reconnecting... Attempt ${reconnectAttempts.current}`);
+          connect();
+        }, delay);
+      }
+    };
+    
+    ws.current = websocket;
+  }, [room, connectionState.sessionToken]);
+
+  const sendMessage = useCallback((message: any) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(message));
+    } else {
+      console.warn('WebSocket not connected, cannot send message');
+    }
+  }, []);
+
+  const sendAction = useCallback((action: any) => {
+    const id = crypto.randomUUID();
+    const message = {
+      type: 'action',
+      id,
+      payload: action
+    };
+    
+    // Store pending action for acknowledgment tracking
+    pendingActions.current.set(id, action);
+    sendMessage(message);
+    
+    // Remove from pending after timeout (action failed)
+    setTimeout(() => {
+      pendingActions.current.delete(id);
+    }, 10000);
+  }, [sendMessage]);
+
+  // Connect on mount and room change
+  useEffect(() => {
+    if (!MOCK_MODE && room) {
+      connect();
+    }
+    
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, [connect, room]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, []);
+
+  return {
+    connectionState,
+    sendMessage,
+    sendAction,
+    lastMessage
+  };
+}

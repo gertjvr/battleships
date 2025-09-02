@@ -4,6 +4,7 @@ import PlayView from './views/PlayView';
 import SwapOverlay from './components/SwapOverlay';
 import Confetti from './components/Confetti';
 import HelpPopover from './components/HelpPopover';
+import OnlineGameManager from './multiplayer/OnlineGameManager';
 import {
   FLEET_SIZES,
   type Coord,
@@ -513,6 +514,7 @@ export default function App() {
           >
             <option value="PVP">Two Players</option>
             <option value="PVC">Vs Computer</option>
+            <option value="ONLINE">Online</option>
           </select>
           {mode === 'PVC' && (
             <>
@@ -546,7 +548,11 @@ export default function App() {
         </div>
       </header>
 
-      {phase === 'P1_PLACE' && (
+      {mode === 'ONLINE' ? (
+        <OnlineGameManager onBack={() => setMode('PVP')} />
+      ) : (
+        <>
+          {phase === 'P1_PLACE' && (
         <PlacementView
           playerIndex={1}
           playerName={names[1]}
@@ -669,6 +675,8 @@ export default function App() {
       />
 
       {phase === 'GAME_OVER' && showConfetti && <Confetti loop origin="center" />}
+      </>
+      )}
     </div>
   );
 }

@@ -5,7 +5,8 @@
   "packageManager": "pnpm@9.7.0",
   "workspaces": [
     "web",
-    "engine"
+    "engine",
+    "worker"
   ],
   "scripts": {
     "dev": "pnpm -C web dev",

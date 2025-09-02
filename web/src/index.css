@@ -149,3 +149,167 @@ body {
 .edge-r::after { border-right-width: 2px; }
 .edge-b::after { border-bottom-width: 2px; }
 .edge-l::after { border-left-width: 2px; }
+
+/* Multiplayer Online Mode Styles */
+.online-game {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.room-setup {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  margin: 2rem 0;
+}
+
+.mode-tabs {
+  display: flex;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.mode-tabs button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  font-weight: 500;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.mode-tabs button.active {
+  color: var(--color-sky-600);
+  border-bottom-color: var(--color-sky-600);
+}
+
+.mode-tabs button:hover {
+  color: var(--color-gray-900);
+}
+
+.create-room, .join-room {
+  text-align: center;
+}
+
+.create-room p, .join-room p {
+  margin-bottom: 1.5rem;
+  color: var(--color-gray-600);
+}
+
+.create-button {
+  background: var(--color-sky-600);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-button:hover {
+  background: var(--color-sky-700);
+}
+
+.join-room form {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.room-input {
+  padding: 0.75rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  min-width: 150px;
+}
+
+.room-input:focus {
+  outline: none;
+  border-color: var(--color-sky-500);
+  box-shadow: 0 0 0 2px rgb(14 165 233 / 0.2);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.status-indicator {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+.status-connecting {
+  background: var(--color-yellow-50);
+  color: var(--color-yellow-800);
+}
+
+.status-connecting .status-indicator {
+  background: var(--color-yellow-400);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-connected {
+  background: var(--color-green-50);
+  color: var(--color-green-800);
+}
+
+.status-connected .status-indicator {
+  background: var(--color-green-400);
+}
+
+.status-disconnected {
+  background: var(--color-red-50);
+  color: var(--color-red-800);
+}
+
+.status-disconnected .status-indicator {
+  background: var(--color-red-400);
+}
+
+.waiting {
+  text-align: center;
+  padding: 2rem;
+  background: var(--color-gray-50);
+  border-radius: 0.5rem;
+  margin: 2rem 0;
+}
+
+.waiting p:first-child {
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+}
+
+.waiting strong {
+  font-family: monospace;
+  font-size: 1.25rem;
+  color: var(--color-sky-600);
+}
+
+.back-button {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.back-button:hover {
+  background: var(--color-gray-200);
+}
