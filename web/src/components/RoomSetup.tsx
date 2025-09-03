@@ -3,12 +3,10 @@ import React, { useState } from 'react';
 interface RoomSetupProps {
   onCreateRoom: (roomCode: string) => void;
   onJoinRoom: (roomCode: string) => void;
-  onSpectateRoom: (roomCode: string) => void;
-  defaultMode?: 'create' | 'join' | 'spectate';
 }
 
-export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectateRoom, defaultMode = 'create' }: RoomSetupProps) {
-  const [mode, setMode] = useState<'create' | 'join' | 'spectate'>(defaultMode);
+export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) {
+  const [mode, setMode] = useState<'create' | 'join'>('create');
   const [roomCode, setRoomCode] = useState('');
 
   const generateRoomCode = () => {
@@ -27,12 +25,6 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectateRoom, de
     }
   };
 
-  const handleSpectate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (roomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(roomCode.trim())) {
-      onSpectateRoom(roomCode.trim().toUpperCase());
-    }
-  };
 
   return (
     <div className="room-setup">
@@ -48,12 +40,6 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectateRoom, de
           onClick={() => setMode('join')}
         >
           Join Room
-        </button>
-        <button 
-          className={mode === 'spectate' ? 'active' : ''}
-          onClick={() => setMode('spectate')}
-        >
-          Spectate Game
         </button>
       </div>
 
@@ -79,24 +65,6 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectateRoom, de
             />
             <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="join-button">
               Join Room
-            </button>
-          </form>
-        </div>
-      ) : (
-        <div className="spectate-room">
-          <p>Enter the room code to watch an ongoing game</p>
-          <form onSubmit={handleSpectate}>
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="Enter room code"
-              maxLength={8}
-              pattern="[A-Z0-9]{6,8}"
-              className="room-input"
-            />
-            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="spectate-button">
-              Spectate Game
             </button>
           </form>
         </div>

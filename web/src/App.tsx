@@ -5,6 +5,7 @@ import SwapOverlay from './components/SwapOverlay';
 import Confetti from './components/Confetti';
 import HelpPopover from './components/HelpPopover';
 import OnlineGameManager from './multiplayer/OnlineGameManager';
+import SpectatorGameManager from './multiplayer/SpectatorGameManager';
 import {
   FLEET_SIZES,
   type Coord,
@@ -573,10 +574,8 @@ export default function App() {
           initialPlayerName={names[1] || ''} 
         />
       ) : mode === 'SPECTATOR' ? (
-        <OnlineGameManager 
+        <SpectatorGameManager 
           onBack={() => setMode('PVP')} 
-          initialPlayerName={names[1] || ''} 
-          isSpectator={true}
         />
       ) : (
         <>
