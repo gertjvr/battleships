@@ -4,10 +4,11 @@ interface RoomSetupProps {
   onCreateRoom: (roomCode: string) => void;
   onJoinRoom: (roomCode: string) => void;
   onSpectateRoom: (roomCode: string) => void;
+  defaultMode?: 'create' | 'join' | 'spectate';
 }
 
-export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectateRoom }: RoomSetupProps) {
-  const [mode, setMode] = useState<'create' | 'join' | 'spectate'>('create');
+export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectateRoom, defaultMode = 'create' }: RoomSetupProps) {
+  const [mode, setMode] = useState<'create' | 'join' | 'spectate'>(defaultMode);
   const [roomCode, setRoomCode] = useState('');
 
   const generateRoomCode = () => {

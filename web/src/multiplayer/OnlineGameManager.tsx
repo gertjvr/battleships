@@ -285,6 +285,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, isSpectat
           onCreateRoom={handleCreateRoom} 
           onJoinRoom={handleJoinRoom} 
           onSpectateRoom={handleSpectateRoom}
+          defaultMode={isSpectator ? 'spectate' : 'create'}
         />
       </div>
     );
