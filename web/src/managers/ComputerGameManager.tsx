@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import Confetti from '../components/Confetti';
@@ -43,6 +43,19 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [aiMem, setAiMem] = useState(() => emptyAIMemory());
   const [names, setNames] = useState<{ 1?: string; 2?: string }>({ 2: 'Computer' });
+
+  const aiTimeoutRef = useRef<number | null>(null);
+
+  function clearAITimeout() {
+    if (aiTimeoutRef.current !== null) {
+      window.clearTimeout(aiTimeoutRef.current);
+      aiTimeoutRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    return () => clearAITimeout();
+  }, []);
 
   const nextSize = useMemo<ShipSize | undefined>(() => {
     return FLEET_SIZES[p1PlaceIndex] as ShipSize | undefined;
@@ -104,7 +117,11 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
       return;
     }
     setPhase('P2_TURN');
-    window.setTimeout(() => computerFire(), 700);
+    clearAITimeout();
+    aiTimeoutRef.current = window.setTimeout(() => {
+      aiTimeoutRef.current = null;
+      computerFire();
+    }, 700);
   }
 
   function computerFire() {
@@ -127,6 +144,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
   }
 
   function handleReset() {
+    clearAITimeout();
     setPhase('P1_PLACE');
     setP1(emptyPlayer());
     setP2(emptyPlayer());
@@ -140,6 +158,11 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
     setAiMem(emptyAIMemory());
   }
 
+  function handleBackClick() {
+    clearAITimeout();
+    onBack();
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
       <h2 className="text-2xl font-bold text-center">
@@ -147,7 +170,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
       </h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button className="btn" onClick={onBack}>Back</button>
+          <button className="btn" onClick={handleBackClick}>Back</button>
           <button className="btn" onClick={handleReset}>Restart</button>
         </div>
         <div className="flex items-center gap-2">
