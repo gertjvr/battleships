@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 interface RoomSetupProps {
   onCreateRoom: (roomCode: string) => void;
   onJoinRoom: (roomCode: string) => void;
+  onSpectate: (roomCode: string) => void;
 }
 
-export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) {
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: RoomSetupProps) {
+  const [mode, setMode] = useState<'create' | 'join' | 'spectate'>('create');
   const [roomCode, setRoomCode] = useState('');
 
   const generateRoomCode = () => {
@@ -22,6 +23,13 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
     e.preventDefault();
     if (roomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(roomCode.trim())) {
       onJoinRoom(roomCode.trim().toUpperCase());
+    }
+  };
+
+  const handleSpectate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (roomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(roomCode.trim())) {
+      onSpectate(roomCode.trim().toUpperCase());
     }
   };
 
@@ -41,6 +49,12 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
         >
           Join Room
         </button>
+        <button 
+          className={mode === 'spectate' ? 'active' : ''}
+          onClick={() => setMode('spectate')}
+        >
+          Spectate
+        </button>
       </div>
 
       {mode === 'create' ? (
@@ -50,7 +64,7 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
             Create Room
           </button>
         </div>
-      ) : (
+      ) : mode === 'join' ? (
         <div className="join-room">
           <p>Enter the room code shared by another player</p>
           <form onSubmit={handleJoin}>
@@ -65,6 +79,24 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
             />
             <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="join-button">
               Join Room
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="spectate-room">
+          <p>Watch an ongoing game by entering the room code</p>
+          <form onSubmit={handleSpectate}>
+            <input
+              type="text"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              placeholder="Enter room code"
+              maxLength={8}
+              pattern="[A-Z0-9]{6,8}"
+              className="room-input"
+            />
+            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="spectate-button">
+              Spectate Game
             </button>
           </form>
         </div>

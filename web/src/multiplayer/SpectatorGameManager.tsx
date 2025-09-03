@@ -83,6 +83,7 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
   if (!roomCode) {
     return (
       <div className="spectator-game max-w-md mx-auto mt-8">
+        <h2 className="text-2xl font-bold text-center mb-4">Spectator Mode</h2>
         <div className="mb-6">
           <button 
             className="btn mb-4"
@@ -126,6 +127,7 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
   if (!gameState || connectionState.status !== 'connected') {
     return (
       <div className="spectator-game">
+        <h2 className="text-2xl font-bold text-center mb-4">Spectator Mode</h2>
         <div className="flex items-center justify-between mb-4">
           <ConnectionStatus 
             status={connectionState.status}
@@ -159,6 +161,7 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
 
   return (
     <div className="spectator-game">
+      <h2 className="text-2xl font-bold text-center mb-4">Spectator Mode</h2>
       {/* Header controls */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">

@@ -7,6 +7,7 @@ import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
 import HelpPopover from '../components/HelpPopover';
+import SpectatorGameManager from './SpectatorGameManager';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
 import { enableAudio, isAudioEnabled, playWin } from '../sound';
@@ -42,6 +43,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
+  const [isSpectating, setIsSpectating] = useState(false);
 
   const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false);
 
@@ -131,6 +133,11 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   }, []);
 
   const handleJoinRoom = useCallback((code: string) => {
+    setRoomCode(code);
+  }, []);
+
+  const handleSpectate = useCallback((code: string) => {
+    setIsSpectating(true);
     setRoomCode(code);
   }, []);
 
@@ -270,13 +277,38 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
     setOverlay({ shown: false, message: '' });
   }, []);
 
+  // Show spectator view if spectating
+  if (isSpectating && roomCode) {
+    return <SpectatorGameManager onBack={() => { setIsSpectating(false); setRoomCode(null); onBack(); }} />;
+  }
+
   // Show room setup if not connected to a room
   if (!roomCode) {
     return (
-      <div className="online-game">
+      <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
+        <h2 className="text-2xl font-bold text-center">Online Multiplayer</h2>
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button className="btn" onClick={onBack}>Back</button>
+            <button className="btn" onClick={() => setRoomCode(null)}>Restart</button>
+          </div>
+          <div className="flex items-center gap-2">
+            {!audioReady && (
+              <button
+                className="btn"
+                onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
+                title="Enable sounds"
+              >
+                Enable Sound
+              </button>
+            )}
+            <HelpPopover />
+          </div>
+        </header>
         <RoomSetup 
           onCreateRoom={handleCreateRoom} 
           onJoinRoom={handleJoinRoom}
+          onSpectate={handleSpectate}
         />
       </div>
     );
@@ -287,40 +319,39 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   // Show loading/connecting state
   if (!gameState || connectionState.status !== 'connected') {
     return (
-      <div className="online-game">
-        <div className="flex items-center justify-between mb-4">
-          <ConnectionStatus 
-            status={connectionState.status}
-            player={myPlayer}
-            roomCode={roomCode}
-            error={connectionState.error}
-            p1Ready={gameState?.p1Ready}
-            p2Ready={gameState?.p2Ready}
-            playerNames={gameState?.names}
-          />
-          <div className="flex gap-2">
-            {connectionState.status === 'disconnected' && (
-              <button 
-                className="btn" 
-                onClick={onBack}
-                title="Return to offline mode"
-              >
-                Back to Offline
-              </button>
-            )}
+      <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
+        <h2 className="text-2xl font-bold text-center">Online Multiplayer</h2>
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button className="btn" onClick={onBack}>Back</button>
             {connectionState.status === 'connected' && (
-              <button 
-                className="btn" 
-                onClick={handleReset}
-                title="Restart the game"
-              >
-                Restart
-              </button>
+              <button className="btn" onClick={handleReset}>Restart</button>
             )}
           </div>
-        </div>
+          <div className="flex items-center gap-2">
+            {!audioReady && (
+              <button
+                className="btn"
+                onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
+                title="Enable sounds"
+              >
+                Enable Sound
+              </button>
+            )}
+            <HelpPopover />
+          </div>
+        </header>
+        <ConnectionStatus 
+          status={connectionState.status}
+          player={myPlayer}
+          roomCode={roomCode}
+          error={connectionState.error}
+          p1Ready={gameState?.p1Ready}
+          p2Ready={gameState?.p2Ready}
+          playerNames={gameState?.names}
+        />
         {connectionState.status === 'connected' && myPlayer === 1 && (
-          <div className="waiting">
+          <div className="text-center space-y-2">
             <p>Waiting for another player to join...</p>
             <p>Share room code: <strong>{roomCode}</strong></p>
           </div>
@@ -342,27 +373,26 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
 
 
   return (
-    <div className="online-game">
-      {/* Connection controls */}
-      <div className="flex items-center justify-end gap-2 mb-6">
-        {!audioReady && (
-          <button
-            className="btn"
-            onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
-            title="Enable sounds"
-          >
-            Enable Sound
-          </button>
-        )}
-        <HelpPopover />
-        <button 
-          className="btn" 
-          onClick={onBack}
-          title="Return to offline mode"
-        >
-          Back to Offline
-        </button>
-      </div>
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-center">Online Multiplayer</h2>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button className="btn" onClick={onBack}>Back</button>
+          <button className="btn" onClick={handleReset}>Restart</button>
+        </div>
+        <div className="flex items-center gap-2">
+          {!audioReady && (
+            <button
+              className="btn"
+              onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
+              title="Enable sounds"
+            >
+              Enable Sound
+            </button>
+          )}
+          <HelpPopover />
+        </div>
+      </header>
 
       {gameState.phase === 'GAME_OVER' && gameState.winner ? (
         /* Game Over Screen */

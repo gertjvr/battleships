@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import LocalGameManager from './managers/LocalGameManager';
 import ComputerGameManager from './managers/ComputerGameManager';
 import OnlineGameManager from './multiplayer/OnlineGameManager';
-import SpectatorGameManager from './multiplayer/SpectatorGameManager';
 import type { Mode, Difficulty } from './persistence';
 
 export default function App() {
@@ -18,17 +17,14 @@ export default function App() {
   if (mode === 'ONLINE') {
     return <OnlineGameManager onBack={() => setMode(null)} initialPlayerName="" />;
   }
-  if (mode === 'SPECTATOR') {
-    return <SpectatorGameManager onBack={() => setMode(null)} />;
-  }
 
   return (
     <div className="p-4 sm:p-6 space-y-4 text-center max-w-md mx-auto">
       <h1 className="text-3xl font-extrabold">Kids Battleships</h1>
       <div className="space-y-3">
-        <button className="btn w-full" onClick={() => setMode('PVP')}>Two Players</button>
+        <button className="btn w-full" onClick={() => setMode('PVP')}>Player vs Player</button>
         <div className="flex items-center gap-2">
-          <button className="btn flex-1" onClick={() => setMode('PVC')}>Vs Computer</button>
+          <button className="btn flex-1" onClick={() => setMode('PVC')}>Player vs Computer</button>
           <select
             className="border rounded px-2 py-1"
             value={difficulty}
@@ -40,7 +36,6 @@ export default function App() {
           </select>
         </div>
         <button className="btn w-full" onClick={() => setMode('ONLINE')}>Online</button>
-        <button className="btn w-full" onClick={() => setMode('SPECTATOR')}>Spectate</button>
       </div>
     </div>
   );

@@ -142,6 +142,9 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-center">
+        Player vs Computer ({difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : 'Hard'})
+      </h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button className="btn" onClick={onBack}>Back</button>
