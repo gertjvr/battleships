@@ -158,7 +158,7 @@ export default function LocalGameManager({ onBack }: Props) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-bold text-center">Player vs Player</h2>
+      <h2 className="text-2xl font-bold text-center">Kids Battleships - Player vs Player</h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button className="btn" onClick={onBack}>Main Menu</button>

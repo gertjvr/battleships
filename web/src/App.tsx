@@ -18,11 +18,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let title = 'Kids Battleships';
-    if (route === '/pvp') title += ' - Player vs Player';
-    else if (route === '/pvc') title += ' - Player vs Computer';
-    else if (route === '/online') title += ' - Online';
-    document.title = title;
+    const titles: Record<string, string> = {
+      '/': 'Main Menu',
+      '/pvp': 'Player vs Player',
+      '/pvc': 'Player vs Computer',
+      '/online': 'Online Multiplayer',
+    };
+    const pageTitle = titles[route] || '';
+    document.title = `Kids Battleships${pageTitle ? ` - ${pageTitle}` : ''}`;
   }, [route]);
 
   function navigate(path: string) {
