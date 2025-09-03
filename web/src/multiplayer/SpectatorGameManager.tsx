@@ -13,7 +13,8 @@ interface GameState {
   p2PlaceIndex: number;
   p1Ready: boolean;
   p2Ready: boolean;
-  orientation: string;
+  p1Orientation: string;
+  p2Orientation: string;
   winner: 1 | 2 | null;
   names: { [key: number]: string };
   log: Array<{ type: string; player?: number; [key: string]: any }>;
