@@ -24,17 +24,39 @@ export default {
     
     // Game persistence endpoints
     if (url.pathname.startsWith('/persistence/')) {
+      // Handle CORS preflight
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
+            'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '86400'
+          }
+        });
+      }
+
       const playerId = url.searchParams.get('playerId') || 'default';
       // Use a consistent ID for the persistence object per player
       const id = env.GAME_PERSISTENCE.idFromName(`persistence-${playerId}`);
       const stub = env.GAME_PERSISTENCE.get(id);
-      
+
       // Forward the request with the persistence path removed
       const persistenceUrl = new URL(request.url);
       persistenceUrl.pathname = persistenceUrl.pathname.replace('/persistence', '');
-      
+
       const persistenceRequest = new Request(persistenceUrl, request);
-      return stub.fetch(persistenceRequest);
+      const response = await stub.fetch(persistenceRequest);
+      const headers = new Headers(response.headers);
+      headers.set('Access-Control-Allow-Origin', request.headers.get('Origin') || '*');
+      headers.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+      headers.set('Access-Control-Allow-Headers', 'Content-Type');
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
     }
     
     // Health check endpoint
