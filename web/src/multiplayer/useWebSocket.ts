@@ -12,6 +12,7 @@ interface ConnectionState {
   player: 1 | 2 | null;
   sessionToken: string | null;
   error: string | null;
+  isSpectator: boolean;
 }
 
 interface WebSocketHook {
@@ -23,12 +24,13 @@ interface WebSocketHook {
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8787';
 
-export function useWebSocket(room: string): WebSocketHook {
+export function useWebSocket(room: string, isSpectator: boolean = false): WebSocketHook {
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     status: 'disconnected',
     player: null,
-    sessionToken: localStorage.getItem(`kids-battleships:session:${room}`),
-    error: null
+    sessionToken: isSpectator ? null : localStorage.getItem(`kids-battleships:session:${room}`),
+    error: null,
+    isSpectator
   });
   
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
@@ -52,12 +54,19 @@ export function useWebSocket(room: string): WebSocketHook {
       reconnectAttempts.current = 0;
       setConnectionState(prev => ({ ...prev, status: 'connected', error: null }));
       
-      // Send join message (get sessionToken from localStorage directly to avoid dependency)
-      const sessionToken = localStorage.getItem(`kids-battleships:session:${room}`);
-      websocket.send(JSON.stringify({
-        type: 'join',
-        payload: { room, sessionToken }
-      }));
+      // Send join or spectate message
+      if (isSpectator) {
+        websocket.send(JSON.stringify({
+          type: 'spectate',
+          payload: { room }
+        }));
+      } else {
+        const sessionToken = localStorage.getItem(`kids-battleships:session:${room}`);
+        websocket.send(JSON.stringify({
+          type: 'join',
+          payload: { room, sessionToken }
+        }));
+      }
     };
     
     websocket.onmessage = (event) => {
@@ -70,8 +79,8 @@ export function useWebSocket(room: string): WebSocketHook {
         switch (message.type) {
           case 'state':
             console.log('🔧 Client handling state message:', message.meta);
-            // Save session token on first connection
-            if (message.meta?.sessionToken && message.meta.sessionToken !== connectionState.sessionToken) {
+            // Save session token on first connection (only for players, not spectators)
+            if (!isSpectator && message.meta?.sessionToken && message.meta.sessionToken !== connectionState.sessionToken) {
               localStorage.setItem(`kids-battleships:session:${room}`, message.meta.sessionToken);
               setConnectionState(prev => ({
                 ...prev,
@@ -79,6 +88,14 @@ export function useWebSocket(room: string): WebSocketHook {
                 player: message.meta.player
               }));
               console.log('🔧 Client updated connection state - player:', message.meta.player);
+            }
+            // For spectators, just update connection state
+            if (isSpectator && message.meta?.spectator) {
+              setConnectionState(prev => ({
+                ...prev,
+                player: null // Spectators don't have a player number
+              }));
+              console.log('🔧 Spectator connected successfully');
             }
             break;
             
@@ -169,7 +186,7 @@ export function useWebSocket(room: string): WebSocketHook {
         ws.current.close();
       }
     };
-  }, [connect, room]);
+  }, [connect, room, isSpectator]);
 
   // Cleanup on unmount
   useEffect(() => {

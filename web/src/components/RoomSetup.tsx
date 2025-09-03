@@ -25,6 +25,7 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
     }
   };
 
+
   return (
     <div className="room-setup">
       <div className="mode-tabs">
