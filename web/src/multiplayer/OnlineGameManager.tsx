@@ -4,6 +4,7 @@ import RoomSetup from '../components/RoomSetup';
 import ConnectionStatus from '../components/ConnectionStatus';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
+import SpectatorView from '../views/SpectatorView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
 import HelpPopover from '../components/HelpPopover';
@@ -30,9 +31,10 @@ interface GameState {
 interface OnlineGameManagerProps {
   onBack: () => void;
   initialPlayerName: string;
+  isSpectator?: boolean;
 }
 
-export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineGameManagerProps) {
+export default function OnlineGameManager({ onBack, initialPlayerName, isSpectator = false }: OnlineGameManagerProps) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -41,8 +43,9 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
+  const [spectatorCount, setSpectatorCount] = useState<number>(0);
 
-  const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '');
+  const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', isSpectator);
 
   // Handle game over effects
   useEffect(() => {
@@ -86,8 +89,12 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
           console.log('🔧 Setting player to:', lastMessage.meta?.player);
           setGameState(deserializedState);
           // Only update player if meta.player is provided (don't override with undefined)
-          if (lastMessage.meta?.player !== undefined) {
+          if (!isSpectator && lastMessage.meta?.player !== undefined) {
             setMyPlayer(lastMessage.meta.player);
+          }
+          // Update spectator count if provided
+          if (lastMessage.meta?.spectatorCount !== undefined) {
+            setSpectatorCount(lastMessage.meta.spectatorCount);
           }
         }
         break;
@@ -130,6 +137,10 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   }, []);
 
   const handleJoinRoom = useCallback((code: string) => {
+    setRoomCode(code);
+  }, []);
+
+  const handleSpectateRoom = useCallback((code: string) => {
     setRoomCode(code);
   }, []);
 
@@ -273,6 +284,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
         <RoomSetup 
           onCreateRoom={handleCreateRoom} 
           onJoinRoom={handleJoinRoom} 
+          onSpectateRoom={handleSpectateRoom}
         />
       </div>
     );
@@ -421,6 +433,23 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
             previewValid={preview?.valid}
           />
         </div>
+      ) : isSpectator ? (
+        <SpectatorView
+          p1Name={gameState.names[1]}
+          p2Name={gameState.names[2]}
+          p1Fleet={gameState.p1.fleet}
+          p2Fleet={gameState.p2.fleet}
+          p1Shots={gameState.p1.shots}
+          p2Shots={gameState.p2.shots}
+          currentTurn={gameState.phase === 'P1_TURN' ? 1 : 2}
+          phase={gameState.phase}
+          spectatorCount={spectatorCount}
+          chat={gameState.log.map((entry, index) => ({
+            who: entry.player === 1 ? 'Player 1' : entry.player === 2 ? 'Player 2' : 'system',
+            text: entry.text || '',
+            key: `${entry.type}-${index}`
+          }))}
+        />
       ) : (
         <PlayView
           currentPlayer={myPlayer || 1}

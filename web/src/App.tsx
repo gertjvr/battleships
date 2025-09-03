@@ -538,11 +538,18 @@ export default function App() {
             >
               Connect Online
             </button>
+            <button 
+              className="btn ml-2"
+              onClick={() => setMode('SPECTATOR')}
+              disabled={phase !== 'P1_PLACE' && phase !== 'P2_PLACE'}
+            >
+              Spectate Game
+            </button>
           </div>
         )}
-        {mode === 'ONLINE' && <div></div>}
-        <h1 className="text-3xl font-extrabold">Kids Battleships{mode === 'ONLINE' ? ' - Online' : ''}</h1>
-        {mode !== 'ONLINE' && (
+        {(mode === 'ONLINE' || mode === 'SPECTATOR') && <div></div>}
+        <h1 className="text-3xl font-extrabold">Kids Battleships{mode === 'ONLINE' ? ' - Online' : mode === 'SPECTATOR' ? ' - Spectator' : ''}</h1>
+        {mode !== 'ONLINE' && mode !== 'SPECTATOR' && (
           <div className="flex items-center gap-2">
             {!audioReady && (
               <button
@@ -557,13 +564,19 @@ export default function App() {
             <button className="btn" onClick={handleReset}>Restart</button>
           </div>
         )}
-        {mode === 'ONLINE' && <div></div>}
+        {(mode === 'ONLINE' || mode === 'SPECTATOR') && <div></div>}
       </header>
 
       {mode === 'ONLINE' ? (
         <OnlineGameManager 
           onBack={() => setMode('PVP')} 
           initialPlayerName={names[1] || ''} 
+        />
+      ) : mode === 'SPECTATOR' ? (
+        <OnlineGameManager 
+          onBack={() => setMode('PVP')} 
+          initialPlayerName={names[1] || ''} 
+          isSpectator={true}
         />
       ) : (
         <>

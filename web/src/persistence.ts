@@ -4,7 +4,7 @@ import type { Player, Ship } from '@app/engine';
 const STORAGE_KEY = 'kids-battleships:game:v1';
 
 export type Phase = 'P1_PLACE' | 'P2_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
-export type Mode = 'PVP' | 'PVC' | 'ONLINE';
+export type Mode = 'PVP' | 'PVC' | 'ONLINE' | 'SPECTATOR';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 type PersistedShip = Omit<Ship, 'hits'> & { hits: string[] };
