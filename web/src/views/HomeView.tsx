@@ -10,7 +10,7 @@ interface Props {
 export default function HomeView({ difficulty, onDifficultyChange, onNavigate }: Props) {
   return (
     <div className="p-4 sm:p-6 space-y-4 text-center max-w-md mx-auto">
-      <h1 className="text-3xl font-extrabold">Kids Battleships - Main Menu</h1>
+      <h1 className="text-3xl font-extrabold">Kids Battleships</h1>
       <div className="space-y-3">
         <button className="btn w-full" onClick={() => onNavigate('/pvp')}>Player vs Player</button>
         <div className="flex items-center gap-2">

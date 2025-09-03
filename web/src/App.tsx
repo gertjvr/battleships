@@ -19,7 +19,7 @@ export default function App() {
 
   useEffect(() => {
     const titles: Record<string, string> = {
-      '/': 'Main Menu',
+      '/': '',
       '/pvp': 'Player vs Player',
       '/pvc': 'Player vs Computer',
       '/online': 'Online Multiplayer',
