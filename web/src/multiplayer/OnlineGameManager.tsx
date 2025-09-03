@@ -374,7 +374,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
             </div>
           ) : (
             <div>
-              <h2 className="text-4xl font-bold text-red-600 mb-2">💀 You Lost 💀</h2>
+              <h2 className="text-4xl font-bold text-red-600 mb-2">😔 You Lost 😔</h2>
               <p className="text-lg text-red-700">
                 {gameState.names[gameState.winner] || `Player ${gameState.winner}`} sunk all your ships!
               </p>
