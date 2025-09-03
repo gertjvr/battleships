@@ -8,14 +8,19 @@ interface ConnectionStatusProps {
   p1Ready?: boolean;
   p2Ready?: boolean;
   playerNames?: { [key: number]: string };
+  isSpectator?: boolean;
+  spectatorCount?: number;
 }
 
-export default function ConnectionStatus({ status, player, roomCode, error, p1Ready, p2Ready, playerNames }: ConnectionStatusProps) {
+export default function ConnectionStatus({ status, player, roomCode, error, p1Ready, p2Ready, playerNames, isSpectator, spectatorCount }: ConnectionStatusProps) {
   const getStatusText = () => {
     switch (status) {
       case 'connecting':
         return 'Connecting...';
       case 'connected':
+        if (isSpectator) {
+          return `Connected as Spectator ${spectatorCount || ''}`;
+        }
         return `Connected as Player ${player}`;
       case 'disconnected':
         return error || 'Disconnected';

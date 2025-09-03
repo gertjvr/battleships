@@ -132,6 +132,8 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
             roomCode={roomCode}
             error={connectionState.error}
             playerNames={gameState?.names}
+            isSpectator={true}
+            spectatorCount={spectatorCount}
           />
           <div className="flex gap-2">
             <button 
@@ -197,11 +199,27 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
         currentTurn={gameState.phase === 'P1_TURN' ? 1 : 2}
         phase={gameState.phase}
         spectatorCount={spectatorCount}
-        chat={gameState.log.map((entry, index) => ({
-          who: entry.player === 1 ? 'Player 1' : entry.player === 2 ? 'Player 2' : 'system',
-          text: entry.text || '',
-          key: `${entry.type}-${index}`
-        }))}
+        chat={gameState.log.map((entry, index) => {
+          let text = '';
+          if (entry.message) {
+            text = entry.message;
+          } else if (entry.text) {
+            text = entry.text;
+          } else if (entry.target) {
+            const coord = `${String.fromCharCode(65 + entry.target.c)}${entry.target.r + 1}`;
+            const result = entry.hit ? 'Hit 💥' : 'Miss 💧';
+            const sunk = entry.sunk ? ' (Sunk ship!)' : '';
+            text = `${coord} - ${result}${sunk}`;
+          } else {
+            text = 'Unknown action';
+          }
+          
+          return {
+            who: entry.player === 1 ? 'me' : entry.player === 2 ? 'them' : 'system',
+            text,
+            key: `${entry.type}-${index}`
+          };
+        })}
       />
       
       {/* Footer connection status */}
@@ -212,6 +230,8 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
           roomCode={roomCode}
           error={connectionState.error}
           playerNames={gameState?.names}
+          isSpectator={true}
+          spectatorCount={spectatorCount}
         />
       </div>
     </div>

@@ -435,6 +435,27 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
           opponentShots={myPlayer === 1 ? gameState.p2.shots : gameState.p1.shots}
           disabled={!isMyTurn || connectionState.status !== 'connected'}
           banner={isMyTurn ? "Take your shot! 🎯" : `Waiting for ${gameState.names[gameState.phase === 'P1_TURN' ? 1 : 2] || `Player ${gameState.phase === 'P1_TURN' ? 1 : 2}`}...`}
+          chat={gameState.log.map((entry, index) => {
+            let text = '';
+            if (entry.message) {
+              text = entry.message;
+            } else if (entry.text) {
+              text = entry.text;
+            } else if (entry.target) {
+              const coord = `${String.fromCharCode(65 + entry.target.c)}${entry.target.r + 1}`;
+              const result = entry.hit ? 'Hit 💥' : 'Miss 💧';
+              const sunk = entry.sunk ? ' (Sunk ship!)' : '';
+              text = `${coord} - ${result}${sunk}`;
+            } else {
+              text = 'Unknown action';
+            }
+            
+            return {
+              who: entry.player === myPlayer ? 'me' : entry.player ? 'them' : 'system',
+              text,
+              key: `${entry.type}-${index}`
+            };
+          })}
         />
       )}
 
