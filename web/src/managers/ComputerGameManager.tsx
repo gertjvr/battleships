@@ -170,7 +170,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
       </h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button className="btn" onClick={handleBackClick}>Back</button>
+          <button className="btn" onClick={handleBackClick}>Main Menu</button>
           <button className="btn" onClick={handleReset}>Restart</button>
         </div>
         <div className="flex items-center gap-2">

@@ -161,7 +161,7 @@ export default function LocalGameManager({ onBack }: Props) {
       <h2 className="text-2xl font-bold text-center">Player vs Player</h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button className="btn" onClick={onBack}>Back</button>
+          <button className="btn" onClick={onBack}>Main Menu</button>
           <button className="btn" onClick={handleReset}>Restart</button>
         </div>
         <div className="flex items-center gap-2">

@@ -289,7 +289,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
         <h2 className="text-2xl font-bold text-center">Online Multiplayer</h2>
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <button className="btn" onClick={onBack}>Back</button>
+            <button className="btn" onClick={onBack}>Main Menu</button>
             <button className="btn" onClick={() => setRoomCode(null)}>Restart</button>
           </div>
           <div className="flex items-center gap-2">
@@ -323,7 +323,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
         <h2 className="text-2xl font-bold text-center">Online Multiplayer</h2>
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <button className="btn" onClick={onBack}>Back</button>
+            <button className="btn" onClick={onBack}>Main Menu</button>
             {connectionState.status === 'connected' && (
               <button className="btn" onClick={handleReset}>Restart</button>
             )}
@@ -377,7 +377,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
       <h2 className="text-2xl font-bold text-center">Online Multiplayer</h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button className="btn" onClick={onBack}>Back</button>
+          <button className="btn" onClick={onBack}>Main Menu</button>
           <button className="btn" onClick={handleReset}>Restart</button>
         </div>
         <div className="flex items-center gap-2">
