@@ -50,17 +50,22 @@ export default function App() {
   useEffect(() => {
     // Load persisted state from cloud with localStorage fallback
     const loadPersistedState = async () => {
-      const persisted = await loadState();
-      if (persisted && persisted.mode) setMode(persisted.mode);
-      if (persisted?.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
-      if (persisted?.ai?.mem) setAiMem({
-        targetQueue: persisted.ai.mem.targetQueue ?? [],
-        cluster: persisted.ai.mem.cluster ?? [],
-        parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
-        sizesLeft: (persisted.ai.mem.sizesLeft && persisted.ai.mem.sizesLeft.length > 0) ? persisted.ai.mem.sizesLeft : [...FLEET_SIZES],
-      } as any);
+      try {
+        const persisted = await loadState();
+        if (persisted && persisted.mode) setMode(persisted.mode);
+        if (persisted?.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
+        if (persisted?.ai?.mem) setAiMem({
+          targetQueue: persisted.ai.mem.targetQueue ?? [],
+          cluster: persisted.ai.mem.cluster ?? [],
+          parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
+          sizesLeft: (persisted.ai.mem.sizesLeft && persisted.ai.mem.sizesLeft.length > 0) ? persisted.ai.mem.sizesLeft : [...FLEET_SIZES],
+        } as any);
+      } catch (error) {
+        console.error('Failed to load persisted state:', error);
+        // App continues with default state
+      }
     };
-    
+
     loadPersistedState();
   }, []);
   useEffect(() => {
@@ -388,34 +393,42 @@ export default function App() {
     }, 900);
   }
 
-  // Load from localStorage once on mount
+  // Load persisted game state on mount
   useEffect(() => {
-    const persisted = loadState();
-    if (!persisted) return;
-    try {
-      setPhase(persisted.phase);
-      setP1(deserializePlayer(persisted.p1));
-      setP2(deserializePlayer(persisted.p2));
-      setP1PlaceIndex(persisted.p1PlaceIndex ?? 0);
-      setP2PlaceIndex(persisted.p2PlaceIndex ?? 0);
-      setOrientation((persisted.orientation as Orientation) ?? 'H');
-      if (persisted.overlay) setOverlay(persisted.overlay);
-      setWinner(persisted.winner ?? null);
-      setNames(persisted.names ?? {});
-      setLog(persisted.log ?? []);
-      setLastShotP1(persisted.lastShotP1 ?? null);
-      setLastShotP2(persisted.lastShotP2 ?? null);
-      setSunkOnP1(persisted.sunkOnP1 ? new Set(persisted.sunkOnP1) : null);
-      setSunkOnP2(persisted.sunkOnP2 ? new Set(persisted.sunkOnP2) : null);
-      setLastSunkOnP1(persisted.lastSunkOnP1 ? new Set(persisted.lastSunkOnP1) : null);
-      setLastSunkOnP2(persisted.lastSunkOnP2 ? new Set(persisted.lastSunkOnP2) : null);
-      setSinkingOnP1(persisted.sinkingOnP1 ? new Set(persisted.sinkingOnP1) : null);
-      setSinkingOnP2(persisted.sinkingOnP2 ? new Set(persisted.sinkingOnP2) : null);
-      setLockUI(!!persisted.lockUI);
-      setPendingHandoff(persisted.pendingHandoff ?? null);
-    } catch {
-      // ignore corrupted state
-    }
+    const hydrateGameState = async () => {
+      try {
+        const persisted = await loadState();
+        if (!persisted) return;
+        try {
+          setPhase(persisted.phase);
+          setP1(deserializePlayer(persisted.p1));
+          setP2(deserializePlayer(persisted.p2));
+          setP1PlaceIndex(persisted.p1PlaceIndex ?? 0);
+          setP2PlaceIndex(persisted.p2PlaceIndex ?? 0);
+          setOrientation((persisted.orientation as Orientation) ?? 'H');
+          if (persisted.overlay) setOverlay(persisted.overlay);
+          setWinner(persisted.winner ?? null);
+          setNames(persisted.names ?? {});
+          setLog(persisted.log ?? []);
+          setLastShotP1(persisted.lastShotP1 ?? null);
+          setLastShotP2(persisted.lastShotP2 ?? null);
+          setSunkOnP1(persisted.sunkOnP1 ? new Set(persisted.sunkOnP1) : null);
+          setSunkOnP2(persisted.sunkOnP2 ? new Set(persisted.sunkOnP2) : null);
+          setLastSunkOnP1(persisted.lastSunkOnP1 ? new Set(persisted.lastSunkOnP1) : null);
+          setLastSunkOnP2(persisted.lastSunkOnP2 ? new Set(persisted.lastSunkOnP2) : null);
+          setSinkingOnP1(persisted.sinkingOnP1 ? new Set(persisted.sinkingOnP1) : null);
+          setSinkingOnP2(persisted.sinkingOnP2 ? new Set(persisted.sinkingOnP2) : null);
+          setLockUI(!!persisted.lockUI);
+          setPendingHandoff(persisted.pendingHandoff ?? null);
+        } catch {
+          // ignore corrupted state
+        }
+      } catch (error) {
+        console.error('Failed to load persisted game state:', error);
+      }
+    };
+
+    hydrateGameState();
   }, []);
 
   // Mark hydration complete after we attempted to load state (next tick)
