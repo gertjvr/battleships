@@ -65,89 +65,51 @@ export default function SpectatorView({
         )}
       </div>
 
-      {/* Dual grid layout */}
+      {/* Dual grid layout - just the guesses */}
       <div className="grid gap-8 md:grid-cols-2">
-        {/* Player 1's perspective */}
+        {/* Player 1's Guesses */}
         <div className="space-y-3">
           <h2 className="font-semibold text-lg text-center">
-            {p1Name || 'Player 1'}
+            {p1Name || 'Player 1'} Guesses
             {currentTurn === 1 && !isGameOver && !isPlacementPhase && (
               <span className="ml-2 text-blue-600">🎯</span>
             )}
           </h2>
           
-          <div className="space-y-2">
-            <h3 className="font-medium text-sm">Fleet Status</h3>
-            <div className="overflow-auto">
-              <Grid
-                mode="display"
-                fleet={p1Fleet}
-                shots={p2Shots}
-                showShips={false} // Spectators only see hits/misses
-                highlightKey={lastShotP2}
-                sunkKeys={sunkOnP1}
-                sinkingKeys={sinkingOnP1}
-                disabled={true}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-medium text-sm">Guesses</h3>
-            <div className="overflow-auto">
-              <Grid
-                mode="fire"
-                opponentFleet={p2Fleet}
-                shots={p1Shots}
-                highlightKey={lastShotP1}
-                sunkKeys={sunkOnP2}
-                sinkingKeys={sinkingOnP2}
-                disabled={true}
-                showShips={false} // Spectators only see revealed information
-              />
-            </div>
+          <div className="overflow-auto">
+            <Grid
+              mode="fire"
+              opponentFleet={p2Fleet}
+              shots={p1Shots}
+              highlightKey={lastShotP1}
+              sunkKeys={sunkOnP2}
+              sinkingKeys={sinkingOnP2}
+              disabled={true}
+              showShips={false} // Spectators only see revealed information
+            />
           </div>
         </div>
 
-        {/* Player 2's perspective */}
+        {/* Player 2's Guesses */}
         <div className="space-y-3">
           <h2 className="font-semibold text-lg text-center">
-            {p2Name || 'Player 2'}
+            {p2Name || 'Player 2'} Guesses
             {currentTurn === 2 && !isGameOver && !isPlacementPhase && (
               <span className="ml-2 text-blue-600">🎯</span>
             )}
           </h2>
           
-          <div className="space-y-2">
-            <h3 className="font-medium text-sm">Fleet Status</h3>
-            <div className="overflow-auto">
-              <Grid
-                mode="display"
-                fleet={p2Fleet}
-                shots={p1Shots}
-                showShips={false} // Spectators only see hits/misses
-                highlightKey={lastShotP1}
-                sunkKeys={sunkOnP2}
-                sinkingKeys={sinkingOnP2}
-                disabled={true}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-medium text-sm">Guesses</h3>
-            <div className="overflow-auto">
-              <Grid
-                mode="fire"
-                opponentFleet={p1Fleet}
-                shots={p2Shots}
-                highlightKey={lastShotP2}
-                sunkKeys={sunkOnP1}
-                sinkingKeys={sinkingOnP1}
-                disabled={true}
-                showShips={false} // Spectators only see revealed information
-              />
-            </div>
+          <div className="overflow-auto">
+            <Grid
+              mode="fire"
+              opponentFleet={p1Fleet}
+              shots={p2Shots}
+              highlightKey={lastShotP2}
+              sunkKeys={sunkOnP1}
+              sinkingKeys={sinkingOnP1}
+              disabled={true}
+              showShips={false} // Spectators only see revealed information
+            />
           </div>
         </div>
       </div>
