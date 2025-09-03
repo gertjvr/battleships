@@ -21,7 +21,8 @@ interface GameState {
   p2PlaceIndex: number;
   p1Ready: boolean;
   p2Ready: boolean;
-  orientation: Orientation;
+  p1Orientation: Orientation;
+  p2Orientation: Orientation;
   winner: 1 | 2 | null;
   names: { [key: number]: string };
   log: Array<{ type: string; player?: number; [key: string]: any }>;
@@ -155,7 +156,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
       player: myPlayer,
       start: c,
       size: nextSize,
-      orientation: gameState.orientation
+      orientation: myPlayer === 1 ? gameState.p1Orientation : gameState.p2Orientation
     });
   }, [myPlayer, gameState, connectionState.status, sendAction]);
 
@@ -184,8 +185,9 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
     const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
     if (amIReady) return; // Already ready, no more changes
 
-    // Toggle orientation in shared game state
-    const newOrientation = gameState.orientation === 'H' ? 'V' : 'H';
+    // Toggle orientation for this player only
+    const currentOrientation = myPlayer === 1 ? gameState.p1Orientation : gameState.p2Orientation;
+    const newOrientation = currentOrientation === 'H' ? 'V' : 'H';
     sendAction({
       type: 'setOrientation',
       player: myPlayer,
@@ -220,8 +222,9 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
       return;
     }
 
-    const coords = coordsFor(c, nextSize, gameState.orientation);
-    const valid = canPlace(currentPlayer.fleet, c, nextSize, gameState.orientation);
+    const currentOrientation = myPlayer === 1 ? gameState.p1Orientation : gameState.p2Orientation;
+    const coords = coordsFor(c, nextSize, currentOrientation);
+    const valid = canPlace(currentPlayer.fleet, c, nextSize, currentOrientation);
     setPreview({ coords, valid });
   }, [myPlayer, gameState, connectionState.status]);
 
@@ -412,7 +415,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
               const placeIndex = myPlayer === 1 ? gameState.p1PlaceIndex : gameState.p2PlaceIndex;
               return [5, 4, 3, 3, 2, 2][placeIndex] as ShipSize | undefined;
             })() : undefined}
-            orientation={gameState.orientation}
+            orientation={myPlayer === 1 ? gameState.p1Orientation : gameState.p2Orientation}
             onRotate={handleOrientationToggle}
             onPlace={handlePlace}
             onHover={handleHover}

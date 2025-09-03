@@ -8,7 +8,8 @@ interface GameState {
   p2PlaceIndex: number;
   p1Ready: boolean;
   p2Ready: boolean;
-  orientation: Orientation;
+  p1Orientation: Orientation;
+  p2Orientation: Orientation;
   winner: 1 | 2 | null;
   names: { [key: number]: string };
   log: Array<{ type: string; player?: number; [key: string]: any }>;
@@ -426,8 +427,12 @@ export class GameRoom implements DurableObject {
       }
 
       case 'setOrientation': {
-        const { orientation } = payload;
-        newState.orientation = orientation;
+        const { player, orientation } = payload;
+        if (player === 1) {
+          newState.p1Orientation = orientation;
+        } else {
+          newState.p2Orientation = orientation;
+        }
         break;
       }
 
@@ -470,7 +475,8 @@ export class GameRoom implements DurableObject {
       p2PlaceIndex: 0,
       p1Ready: false,
       p2Ready: false,
-      orientation: 'H',
+      p1Orientation: 'H',
+      p2Orientation: 'H',
       winner: null,
       names: {},
       log: []
