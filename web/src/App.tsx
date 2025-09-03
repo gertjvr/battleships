@@ -52,9 +52,10 @@ export default function App() {
     const loadPersistedState = async () => {
       try {
         const persisted = await loadState();
-        if (persisted && persisted.mode) setMode(persisted.mode);
-        if (persisted?.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
-        if (persisted?.ai?.mem) setAiMem({
+        if (!persisted) return;
+        if (persisted.mode) setMode(persisted.mode);
+        if (persisted.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
+        if (persisted.ai?.mem) setAiMem({
           targetQueue: persisted.ai.mem.targetQueue ?? [],
           cluster: persisted.ai.mem.cluster ?? [],
           parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
