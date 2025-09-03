@@ -87,3 +87,8 @@ pnpm -C web dev
 
 ## Testing
 No testing framework currently configured. When adding tests, use Vitest for both engine and web packages with appropriate scripts in individual `package.json` files.
+
+## Agent Tools
+- Serena (code): Use to locate symbols and navigate code quickly. Examples: find a function by name (`find_symbol name_path:"placeShip" within engine/src`), get file overviews (`get_symbols_overview web/src/App.tsx`), and search by pattern for usages (e.g., `coordsFor`). Prefer symbol-based queries over raw text.
+- Context7 (docs): Resolve the library, then fetch focused docs. Example: `resolve-library-id "vite"` ➜ `get-library-docs id topic:"build"`. Useful for Vite config, React 18 APIs, and TypeScript compiler options.
+- Sequential-thinking (planning): For multi-step tasks, write short thoughts by stage (Problem Definition → Research → Analysis → Synthesis → Conclusion). Keep each thought actionable; update the next step as you learn.
