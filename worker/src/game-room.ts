@@ -25,6 +25,7 @@ export class GameRoom implements DurableObject {
   private gameState: GameState | null = null;
   private playerSessions = new Map<string, number>(); // sessionToken → player
   private sessions = new WeakMap<WebSocket, string>(); // WebSocket → sessionToken
+  private spectators = new Set<WebSocket>(); // Spectator connections
   private recentActions = new Set<string>(); // Last 100 action IDs
 
   constructor(private state: DurableObjectState, private env: any) {}
@@ -82,6 +83,7 @@ export class GameRoom implements DurableObject {
 
     ws.addEventListener('close', () => {
       this.connections.delete(ws);
+      this.spectators.delete(ws);
     });
   }
 
@@ -89,6 +91,9 @@ export class GameRoom implements DurableObject {
     switch (msg.type) {
       case 'join':
         await this.handleJoin(ws, msg.payload);
+        break;
+      case 'spectate':
+        await this.handleSpectate(ws, msg.payload);
         break;
       case 'action':
         await this.handleAction(ws, msg);
@@ -137,10 +142,47 @@ export class GameRoom implements DurableObject {
     }));
   }
 
+  async handleSpectate(ws: WebSocket, payload: any) {
+    // Add to spectators set
+    this.spectators.add(ws);
+
+    // Initialize game state if needed
+    if (!this.gameState) {
+      await this.init();
+    }
+
+    // Send current state snapshot to spectator
+    const snapshot = this.gameState || this.createInitialState();
+    ws.send(JSON.stringify({
+      type: 'state',
+      payload: this.serializeState(snapshot),
+      meta: { 
+        spectator: true, 
+        spectatorCount: this.spectators.size 
+      }
+    }));
+
+    // Broadcast updated spectator count to all clients
+    this.broadcast({
+      type: 'state',
+      payload: this.serializeState(snapshot),
+      meta: { spectatorCount: this.spectators.size }
+    });
+  }
+
   async handleAction(ws: WebSocket, msg: any) {
     const { payload, id } = msg;
     const sessionToken = this.sessions.get(ws);
     const player = sessionToken ? this.playerSessions.get(sessionToken) : null;
+
+    // Prevent spectators from performing actions
+    if (this.spectators.has(ws)) {
+      ws.send(JSON.stringify({ 
+        type: 'error', 
+        payload: { code: 'SPECTATOR_ACTION', message: 'Spectators cannot perform actions' } 
+      }));
+      return;
+    }
 
     // Validate action ownership
     if (!player || payload.player !== player) {
@@ -192,7 +234,7 @@ export class GameRoom implements DurableObject {
     // Acknowledge action id for idempotency
     this.broadcast({ type: 'action', id, payload, meta: { ack: true } });
     // Also broadcast updated state so all clients sync to authoritative version
-    this.broadcast({ type: 'state', payload: snapshot });
+    this.broadcast({ type: 'state', payload: snapshot, meta: { spectatorCount: this.spectators.size } });
   }
 
   validatePlacement(payload: any): boolean {
