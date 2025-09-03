@@ -1,6 +1,6 @@
 name = "battleships-ws"
-main = "src/index.ts"
-compatibility_date = "2024-09-01"
+main = "dist/index.js"
+compatibility_date = "2025-09-03"
 
 [[durable_objects.bindings]]
 name = "GAME_ROOMS"
@@ -8,4 +8,4 @@ class_name = "GameRoom"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["GameRoom"]
+new_sqlite_classes = ["GameRoom"]
