@@ -2,10 +2,21 @@ name = "battleships-ws"
 main = "dist/index.js"
 compatibility_date = "2025-09-03"
 
+[triggers]
+crons = ["0 */6 * * *"]  # Run cleanup every 6 hours
+
 [[durable_objects.bindings]]
 name = "GAME_ROOMS"
 class_name = "GameRoom"
 
+[[durable_objects.bindings]]
+name = "GAME_PERSISTENCE"
+class_name = "GamePersistence"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["GamePersistence"]

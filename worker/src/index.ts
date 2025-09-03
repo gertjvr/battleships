@@ -1,7 +1,9 @@
 import { GameRoom } from './game-room';
+import { GamePersistence } from './game-persistence';
 
 export interface Env {
   GAME_ROOMS: DurableObjectNamespace;
+  GAME_PERSISTENCE: DurableObjectNamespace;
 }
 
 export default {
@@ -20,13 +22,39 @@ export default {
       return stub.fetch(request);
     }
     
+    // Game persistence endpoints
+    if (url.pathname.startsWith('/persistence/')) {
+      const playerId = url.searchParams.get('playerId') || 'default';
+      // Use a consistent ID for the persistence object per player
+      const id = env.GAME_PERSISTENCE.idFromName(`persistence-${playerId}`);
+      const stub = env.GAME_PERSISTENCE.get(id);
+      
+      // Forward the request with the persistence path removed
+      const persistenceUrl = new URL(request.url);
+      persistenceUrl.pathname = persistenceUrl.pathname.replace('/persistence', '');
+      
+      const persistenceRequest = new Request(persistenceUrl, request);
+      return stub.fetch(persistenceRequest);
+    }
+    
     // Health check endpoint
     if (url.pathname === '/health') {
       return new Response('OK', { status: 200 });
     }
     
     return new Response('Not found', { status: 404 });
+  },
+  
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    // Run cleanup across all persistence instances
+    console.log('Running scheduled cleanup task');
+    
+    // We could trigger cleanup on all known persistence instances
+    // For now, the cleanup will happen per-player when they access their games
+    // Future enhancement: maintain a registry of active persistence instances
+    
+    console.log('Scheduled cleanup completed');
   }
 };
 
-export { GameRoom };
+export { GameRoom, GamePersistence };

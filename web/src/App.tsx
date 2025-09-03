@@ -4,6 +4,7 @@ import PlayView from './views/PlayView';
 import SwapOverlay from './components/SwapOverlay';
 import Confetti from './components/Confetti';
 import HelpPopover from './components/HelpPopover';
+import CleanupControls from './components/CleanupControls';
 import OnlineGameManager from './multiplayer/OnlineGameManager';
 import SpectatorGameManager from './multiplayer/SpectatorGameManager';
 import {
@@ -18,7 +19,8 @@ import {
   coordsFor,
 } from '@app/engine';
 import { playHit, playMiss, playSunk, playWin, enableAudio, isAudioEnabled } from './sound';
-import { loadState, saveState, clearState, serializePlayer, deserializePlayer, type Mode } from './persistence';
+import { serializePlayer, deserializePlayer, type Mode } from './persistence';
+import { loadState, saveState, clearState } from './cloudPersistence';
 import { randomPlaceFleet, chooseNextShot, emptyAIMemory, updateAIMemory } from './ai';
 import type { Difficulty } from './persistence';
 function coordLabel(r: number, c: number): string {
@@ -46,21 +48,29 @@ export default function App() {
   const [aiDifficulty, setAiDifficulty] = useState<Difficulty>('easy');
   const [aiMem, setAiMem] = useState(() => emptyAIMemory());
   useEffect(() => {
-    const persisted = loadState();
-    if (persisted && persisted.mode) setMode(persisted.mode);
-    if (persisted?.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
-    if (persisted?.ai?.mem) setAiMem({
-      targetQueue: persisted.ai.mem.targetQueue ?? [],
-      cluster: persisted.ai.mem.cluster ?? [],
-      parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
-      sizesLeft: (persisted.ai.mem.sizesLeft && persisted.ai.mem.sizesLeft.length > 0) ? persisted.ai.mem.sizesLeft : [...FLEET_SIZES],
-    } as any);
+    // Load persisted state from cloud with localStorage fallback
+    const loadPersistedState = async () => {
+      const persisted = await loadState();
+      if (persisted && persisted.mode) setMode(persisted.mode);
+      if (persisted?.ai?.difficulty) setAiDifficulty(persisted.ai.difficulty);
+      if (persisted?.ai?.mem) setAiMem({
+        targetQueue: persisted.ai.mem.targetQueue ?? [],
+        cluster: persisted.ai.mem.cluster ?? [],
+        parity: (persisted.ai.mem.parity ?? 0) as 0 | 1,
+        sizesLeft: (persisted.ai.mem.sizesLeft && persisted.ai.mem.sizesLeft.length > 0) ? persisted.ai.mem.sizesLeft : [...FLEET_SIZES],
+      } as any);
+    };
+    
+    loadPersistedState();
   }, []);
   useEffect(() => {
-    const current = loadState();
-    if (current) {
-      saveState({ ...current, mode, ai: { difficulty: aiDifficulty, mem: { targetQueue: aiMem.targetQueue, cluster: aiMem.cluster, parity: (aiMem as any).parity, sizesLeft: (aiMem as any).sizesLeft } } });
-    }
+    const updateState = async () => {
+      const current = await loadState();
+      if (current) {
+        await saveState({ ...current, mode, ai: { difficulty: aiDifficulty, mem: { targetQueue: aiMem.targetQueue, cluster: aiMem.cluster, parity: (aiMem as any).parity, sizesLeft: (aiMem as any).sizesLeft } } });
+      }
+    };
+    updateState();
   }, [mode, aiDifficulty, aiMem]);
   const [winner, setWinner] = useState<1 | 2 | null>(null);
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
@@ -479,7 +489,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [phase, overlay.shown]);
 
-  function handleReset() {
+  async function handleReset() {
     setPhase('P1_PLACE');
     setP1(emptyPlayer());
     setP2(emptyPlayer());
@@ -499,7 +509,7 @@ export default function App() {
     setSinkingOnP2(null);
     setLockUI(false);
     setPendingHandoff(null);
-    clearState();
+    await clearState();
   }
 
   return (
@@ -562,6 +572,7 @@ export default function App() {
               </button>
             )}
             <HelpPopover />
+            <CleanupControls onDataCleared={() => handleReset()} />
             <button className="btn" onClick={handleReset}>Restart</button>
           </div>
         )}

@@ -24,11 +24,30 @@ interface WebSocketHook {
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8787';
 
+// Helper function to get session token from localStorage
+function getSessionToken(room: string): string | null {
+  try {
+    const stored = localStorage.getItem(`kids-battleships:session:${room}`);
+    if (!stored) return null;
+    
+    // Try to parse as new format (with timestamp)
+    try {
+      const sessionData = JSON.parse(stored);
+      return sessionData.token || null;
+    } catch {
+      // Fallback to old format (plain string)
+      return stored;
+    }
+  } catch {
+    return null;
+  }
+}
+
 export function useWebSocket(room: string, isSpectator: boolean = false): WebSocketHook {
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     status: 'disconnected',
     player: null,
-    sessionToken: isSpectator ? null : localStorage.getItem(`kids-battleships:session:${room}`),
+    sessionToken: isSpectator ? null : getSessionToken(room),
     error: null,
     isSpectator
   });
@@ -61,7 +80,7 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
           payload: { room }
         }));
       } else {
-        const sessionToken = localStorage.getItem(`kids-battleships:session:${room}`);
+        const sessionToken = getSessionToken(room);
         websocket.send(JSON.stringify({
           type: 'join',
           payload: { room, sessionToken }
@@ -81,7 +100,12 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
             console.log('🔧 Client handling state message:', message.meta);
             // Save session token on first connection (only for players, not spectators)
             if (!isSpectator && message.meta?.sessionToken && message.meta.sessionToken !== connectionState.sessionToken) {
-              localStorage.setItem(`kids-battleships:session:${room}`, message.meta.sessionToken);
+              const sessionData = {
+                token: message.meta.sessionToken,
+                timestamp: Date.now(),
+                roomCode: room
+              };
+              localStorage.setItem(`kids-battleships:session:${room}`, JSON.stringify(sessionData));
               setConnectionState(prev => ({
                 ...prev,
                 sessionToken: message.meta.sessionToken,

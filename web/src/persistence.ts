@@ -41,6 +41,7 @@ export type PersistedState = {
       sizesLeft?: number[];
     };
   };
+  savedAt?: number;
 };
 
 function serializeShip(s: Ship): PersistedShip {
@@ -61,7 +62,8 @@ export function deserializePlayer(p: PersistedPlayer): Player {
 
 export function saveState(state: PersistedState): void {
   try {
-    const json = JSON.stringify(state);
+    const stateWithTimestamp = { ...state, savedAt: Date.now() };
+    const json = JSON.stringify(stateWithTimestamp);
     localStorage.setItem(STORAGE_KEY, json);
   } catch (_e) {
     // ignore storage errors (quota/unsupported)
@@ -81,4 +83,96 @@ export function loadState(): PersistedState | null {
 
 export function clearState(): void {
   try { localStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
+// Cleanup constants
+const SESSION_EXPIRY_DAYS = 7;
+const GAME_STATE_EXPIRY_DAYS = 1;
+
+// Session token cleanup
+const isSessionExpired = (timestamp: number) => {
+  return Date.now() - timestamp > SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+};
+
+export function cleanupExpiredSessions(): number {
+  let cleanedCount = 0;
+  const keysToRemove: string[] = [];
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('kids-battleships:session:')) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '{}');
+        if (stored.timestamp && isSessionExpired(stored.timestamp)) {
+          keysToRemove.push(key);
+        } else if (!stored.timestamp) {
+          // Remove sessions without timestamps (legacy format)
+          keysToRemove.push(key);
+        }
+      } catch {
+        // Remove corrupted entries
+        keysToRemove.push(key);
+      }
+    }
+  }
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+    cleanedCount++;
+  });
+  
+  return cleanedCount;
+}
+
+// Game state cleanup
+export function cleanupOldGameState(): boolean {
+  const state = loadState();
+  if (state?.savedAt) {
+    const daysSinceModified = (Date.now() - state.savedAt) / (24 * 60 * 60 * 1000);
+    if (daysSinceModified > GAME_STATE_EXPIRY_DAYS) {
+      clearState();
+      return true; // State was expired and cleared
+    }
+  }
+  return false; // State is still valid
+}
+
+// Storage usage monitoring
+export function getStorageUsage() {
+  let totalSize = 0;
+  let battleshipsSize = 0;
+  let sessionCount = 0;
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    const value = localStorage.getItem(key || '');
+    const size = (key?.length || 0) + (value?.length || 0);
+    totalSize += size;
+    
+    if (key?.startsWith('kids-battleships:')) {
+      battleshipsSize += size;
+      if (key.includes(':session:')) sessionCount++;
+    }
+  }
+  
+  return {
+    totalSize,
+    battleshipsSize,
+    sessionCount,
+    percentageUsed: (totalSize / (10 * 1024 * 1024)) * 100 // Assume 10MB limit
+  };
+}
+
+// Clear all battleships data
+export function clearAllBattleshipsData(): number {
+  let clearedCount = 0;
+  const keysToRemove = Object.keys(localStorage)
+    .filter(key => key.startsWith('kids-battleships:'));
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+    clearedCount++;
+  });
+  
+  return clearedCount;
 }
