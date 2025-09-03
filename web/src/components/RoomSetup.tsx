@@ -50,7 +50,7 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
             Create Room
           </button>
         </div>
-      ) : mode === 'join' ? (
+      ) : (
         <div className="join-room">
           <p>Enter the room code shared by another player</p>
           <form onSubmit={handleJoin}>
