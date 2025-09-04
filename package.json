@@ -6,11 +6,11 @@
   "workspaces": [
     "web",
     "engine",
-    "worker"
+    "convex"
   ],
   "scripts": {
-    "dev": "concurrently \"pnpm -C worker dev\" \"pnpm -C web dev\"",
-    "build": "pnpm -C engine build && pnpm -C worker build",
+    "dev": "concurrently \"pnpm -C convex dev\" \"pnpm -C web dev\"",
+    "build": "pnpm -C engine build && pnpm -C web build",
     "preview": "pnpm -C web preview"
   },
   "devDependencies": {

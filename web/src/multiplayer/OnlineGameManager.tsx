@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useConvexRoom } from './useConvexRoom';
 import RoomSetup from '../components/RoomSetup';
 import ConnectionStatus from '../components/ConnectionStatus';
 import PlacementView from '../views/PlacementView';
@@ -48,9 +48,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
   const [isSpectating, setIsSpectating] = useState(initialRole === 'spectator');
 
-  // Avoid opening a player connection while spectating to prevent accidental join attempts
-  const roomForPlayerWS = isSpectating ? '' : (roomCode || '');
-  const { connectionState, sendAction, lastMessage } = useWebSocket(roomForPlayerWS, false);
+  const { connectionState, sendAction, gameState: serverState } = useConvexRoom(roomCode || '', isSpectating);
 
   // Handle game over effects
   useEffect(() => {
@@ -63,62 +61,32 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
     }
   }, [gameState?.phase, gameState?.winner, myPlayer]);
 
-  // Handle incoming WebSocket messages
+  // Sync state from Convex
   useEffect(() => {
-    if (!lastMessage) return;
-
-    switch (lastMessage.type) {
-      case 'state':
-        console.log('🔧 OnlineGameManager received state message:', lastMessage);
-        // Deserialize the game state
-        const state = lastMessage.payload;
-        if (state) {
-          const deserializedState: GameState = {
-            ...state,
-            p1: {
-              fleet: state.p1.fleet.map((ship: any) => ({
-                ...ship,
-                hits: new Set(ship.hits)
-              })),
-              shots: new Set(state.p1.shots)
-            },
-            p2: {
-              fleet: state.p2.fleet.map((ship: any) => ({
-                ...ship,
-                hits: new Set(ship.hits)
-              })),
-              shots: new Set(state.p2.shots)
-            }
-          };
-          console.log('🔧 Setting game state:', deserializedState);
-          console.log('🔧 Setting player to:', lastMessage.meta?.player);
-          setGameState(deserializedState);
-          // Only update player if meta.player is provided (don't override with undefined)
-          if (lastMessage.meta?.player !== undefined) {
-            setMyPlayer(lastMessage.meta.player);
-          }
-        }
-        break;
-
-      case 'action':
-        // Update local state based on server actions
-        if (lastMessage.payload && gameState) {
-          // The server has already validated and applied the action
-          // We just need to update our local state to match
-          // This would typically be handled by re-receiving the full state
-          // For now, we rely on the state updates from the server
-        }
-        break;
-
-      case 'error':
-        console.error('WebSocket error:', lastMessage.payload);
-        if (lastMessage.payload?.code === 'ROOM_FULL') {
-          alert('Room is full. Please try a different room.');
-          setRoomCode(null);
-        }
-        break;
+    if (!serverState) return;
+    const state = serverState;
+    const deserializedState: GameState = {
+      ...state,
+      p1: {
+        fleet: state.p1.fleet.map((ship: any) => ({
+          ...ship,
+          hits: new Set(ship.hits)
+        })),
+        shots: new Set(state.p1.shots)
+      },
+      p2: {
+        fleet: state.p2.fleet.map((ship: any) => ({
+          ...ship,
+          hits: new Set(ship.hits)
+        })),
+        shots: new Set(state.p2.shots)
+      }
+    };
+    setGameState(deserializedState);
+    if (!isSpectating && connectionState.player !== null) {
+      setMyPlayer(connectionState.player);
     }
-  }, [lastMessage]);
+  }, [serverState, connectionState.player, isSpectating]);
 
   // Send player name once connected, with unique name for each player
   useEffect(() => {
