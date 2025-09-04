@@ -22,11 +22,12 @@ interface GameState {
 
 interface SpectatorGameManagerProps {
   onBack: () => void;
+  initialRoomCode?: string;
 }
 
-export default function SpectatorGameManager({ onBack }: SpectatorGameManagerProps) {
-  const [roomCode, setRoomCode] = useState<string>('');
-  const [inputRoomCode, setInputRoomCode] = useState<string>('');
+export default function SpectatorGameManager({ onBack, initialRoomCode }: SpectatorGameManagerProps) {
+  const [roomCode, setRoomCode] = useState<string>(initialRoomCode || '');
+  const [inputRoomCode, setInputRoomCode] = useState<string>(initialRoomCode || '');
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [spectatorCount, setSpectatorCount] = useState<number>(0);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());

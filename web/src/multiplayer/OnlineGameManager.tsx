@@ -45,7 +45,9 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
   const [isSpectating, setIsSpectating] = useState(false);
 
-  const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false);
+  // Avoid opening a player connection while spectating to prevent accidental join attempts
+  const roomForPlayerWS = isSpectating ? '' : (roomCode || '');
+  const { connectionState, sendAction, lastMessage } = useWebSocket(roomForPlayerWS, false);
 
   // Handle game over effects
   useEffect(() => {
@@ -279,7 +281,12 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
 
   // Show spectator view if spectating
   if (isSpectating && roomCode) {
-    return <SpectatorGameManager onBack={() => { setIsSpectating(false); setRoomCode(null); onBack(); }} />;
+    return (
+      <SpectatorGameManager 
+        initialRoomCode={roomCode}
+        onBack={() => { setIsSpectating(false); setRoomCode(null); onBack(); }} 
+      />
+    );
   }
 
   // Show room setup if not connected to a room
