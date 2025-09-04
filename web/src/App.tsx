@@ -18,13 +18,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const base = (route.split('?')[0]) || route;
     const titles: Record<string, string> = {
       '/': '',
       '/pvp': 'Player vs Player',
       '/pvc': 'Player vs Computer',
       '/online': 'Online Multiplayer',
     };
-    const pageTitle = titles[route] || '';
+    const pageTitle = titles[base] || '';
     document.title = `Kids Battleships${pageTitle ? ` - ${pageTitle}` : ''}`;
   }, [route]);
 
@@ -32,14 +33,32 @@ export default function App() {
     window.location.hash = path;
   }
 
-  if (route === '/pvp') {
+  const baseRoute = (route.split('?')[0]) || route;
+  const query = (() => {
+    const q = route.includes('?') ? route.split('?')[1] : '';
+    return new URLSearchParams(q);
+  })();
+
+  if (baseRoute === '/pvp') {
     return <LocalGameManager onBack={() => navigate('/')} />;
   }
-  if (route === '/pvc') {
+  if (baseRoute === '/pvc') {
     return <ComputerGameManager onBack={() => navigate('/')} difficulty={difficulty} />;
   }
-  if (route === '/online') {
-    return <OnlineGameManager onBack={() => navigate('/')} initialPlayerName="" />;
+  if (baseRoute === '/online') {
+    const room = query.get('room') || undefined;
+    const role = (query.get('role') as 'player' | 'spectator' | null) || undefined;
+    const asPlayer = query.get('as');
+    const initialPlayer = asPlayer === '1' ? 1 : asPlayer === '2' ? 2 : undefined;
+    return (
+      <OnlineGameManager
+        onBack={() => navigate('/')}
+        initialPlayerName=""
+        initialRoomCode={room || null}
+        initialRole={role}
+        initialPlayerHint={initialPlayer}
+      />
+    );
   }
 
   return (

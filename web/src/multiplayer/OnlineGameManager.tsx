@@ -32,18 +32,21 @@ interface GameState {
 interface OnlineGameManagerProps {
   onBack: () => void;
   initialPlayerName: string;
+  initialRoomCode?: string | null;
+  initialRole?: 'player' | 'spectator';
+  initialPlayerHint?: 1 | 2 | null;
 }
 
-export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineGameManagerProps) {
-  const [roomCode, setRoomCode] = useState<string | null>(null);
+export default function OnlineGameManager({ onBack, initialPlayerName, initialRoomCode = null, initialRole = 'player', initialPlayerHint = null }: OnlineGameManagerProps) {
+  const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode);
   const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(null);
+  const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(initialPlayerHint);
   const [showConfetti, setShowConfetti] = useState(false);
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
-  const [isSpectating, setIsSpectating] = useState(false);
+  const [isSpectating, setIsSpectating] = useState(initialRole === 'spectator');
 
   // Avoid opening a player connection while spectating to prevent accidental join attempts
   const roomForPlayerWS = isSpectating ? '' : (roomCode || '');
@@ -132,16 +135,41 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
   // Handle room creation/joining
   const handleCreateRoom = useCallback((code: string) => {
     setRoomCode(code);
+    const params = new URLSearchParams();
+    params.set('room', code);
+    params.set('role', 'player');
+    window.location.hash = `/online?${params.toString()}`;
   }, []);
 
   const handleJoinRoom = useCallback((code: string) => {
     setRoomCode(code);
+    const params = new URLSearchParams();
+    params.set('room', code);
+    params.set('role', 'player');
+    window.location.hash = `/online?${params.toString()}`;
   }, []);
 
   const handleSpectate = useCallback((code: string) => {
     setIsSpectating(true);
     setRoomCode(code);
+    const params = new URLSearchParams();
+    params.set('room', code);
+    params.set('role', 'spectator');
+    window.location.hash = `/online?${params.toString()}`;
   }, []);
+
+  // Keep URL in sync with role, room, and assigned player
+  useEffect(() => {
+    if (!roomCode) return;
+    const params = new URLSearchParams();
+    params.set('room', roomCode);
+    params.set('role', isSpectating ? 'spectator' : 'player');
+    if (!isSpectating && myPlayer) params.set('as', String(myPlayer));
+    const newHash = `/online?${params.toString()}`;
+    if (window.location.hash.slice(1) !== newHash) {
+      window.location.hash = newHash;
+    }
+  }, [roomCode, isSpectating, myPlayer]);
 
 
   // Game action handlers
