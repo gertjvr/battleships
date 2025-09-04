@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 
 export type ChatEntry = {
   who: 'me' | 'them' | 'system';
@@ -7,8 +7,6 @@ export type ChatEntry = {
 };
 
 export default function ChatHistory({ entries, title = 'History', meLabel = 'P1', themLabel = 'P2' }: { entries: ChatEntry[]; title?: string; meLabel?: string; themLabel?: string }) {
-  const endRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [entries]);
 
   const grouped = useMemo(() => {
     return entries.map((e, i, arr) => {
@@ -56,7 +54,6 @@ export default function ChatHistory({ entries, title = 'History', meLabel = 'P1'
               </div>
             );
           })}
-          <div ref={endRef} />
         </div>
       </div>
     </div>
