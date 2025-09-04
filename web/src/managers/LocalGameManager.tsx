@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
@@ -16,6 +16,14 @@ import {
   coordsFor,
 } from '@app/engine';
 import { enableAudio, isAudioEnabled, playHit, playMiss, playSunk, playWin } from '../sound';
+import {
+  saveState,
+  loadState,
+  clearState,
+  serializePlayer,
+  deserializePlayer,
+  type PersistedState,
+} from '../persistence';
 
 type Phase = 'P1_PLACE' | 'P2_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 
@@ -42,6 +50,57 @@ export default function LocalGameManager({ onBack }: Props) {
   const [lastShotP2, setLastShotP2] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [names, setNames] = useState<{ 1?: string; 2?: string }>({});
+
+  // Load persisted PVP state on mount
+  useEffect(() => {
+    const persisted = loadState();
+    if (!persisted || persisted.mode !== 'PVP') return;
+    try {
+      setPhase(persisted.phase);
+      setP1(deserializePlayer(persisted.p1));
+      setP2(deserializePlayer(persisted.p2));
+      setP1PlaceIndex(persisted.p1PlaceIndex ?? 0);
+      setP2PlaceIndex(persisted.p2PlaceIndex ?? 0);
+      setOrientation((persisted.orientation as Orientation) ?? 'H');
+      if (persisted.overlay) setOverlay(persisted.overlay);
+      setWinner(persisted.winner ?? null);
+      setNames(persisted.names ?? {});
+      setLastShotP1(persisted.lastShotP1 ?? null);
+      setLastShotP2(persisted.lastShotP2 ?? null);
+      setShowConfetti(persisted.phase === 'GAME_OVER' && !!persisted.winner);
+    } catch {
+      // ignore malformed persisted state
+    }
+  }, []);
+
+  // Persist state on changes
+  useEffect(() => {
+    const state: PersistedState = {
+      phase,
+      p1: serializePlayer(p1),
+      p2: serializePlayer(p2),
+      p1PlaceIndex,
+      p2PlaceIndex,
+      orientation,
+      overlay,
+      winner,
+      names,
+      log: [],
+      lastShotP1,
+      lastShotP2,
+      sunkOnP1: null,
+      sunkOnP2: null,
+      lastSunkOnP1: null,
+      lastSunkOnP2: null,
+      sinkingOnP1: null,
+      sinkingOnP2: null,
+      lockUI: undefined,
+      pendingHandoff: null,
+      mode: 'PVP',
+      ai: undefined,
+    };
+    saveState(state);
+  }, [phase, p1, p2, p1PlaceIndex, p2PlaceIndex, orientation, overlay, winner, names, lastShotP1, lastShotP2]);
 
   const nextSize = useMemo<ShipSize | undefined>(() => {
     const i = phase === 'P1_PLACE' ? p1PlaceIndex : p2PlaceIndex;
@@ -161,7 +220,7 @@ export default function LocalGameManager({ onBack }: Props) {
       <h2 className="text-2xl font-bold text-center">Kids Battleships - Player vs Player</h2>
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button className="btn" onClick={onBack}>Main Menu</button>
+          <button className="btn" onClick={() => { clearState(); onBack(); }}>Main Menu</button>
           <button className="btn" onClick={handleReset}>Restart</button>
         </div>
         <div className="flex items-center gap-2">

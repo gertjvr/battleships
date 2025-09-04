@@ -17,6 +17,14 @@ import {
 import { randomPlaceFleet, chooseNextShot, emptyAIMemory, updateAIMemory } from '../ai';
 import { enableAudio, isAudioEnabled, playHit, playMiss, playSunk, playWin } from '../sound';
 import type { Difficulty } from '../persistence';
+import {
+  saveState,
+  loadState,
+  clearState,
+  serializePlayer,
+  deserializePlayer,
+  type PersistedState,
+} from '../persistence';
 
 type Phase = 'P1_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 
@@ -56,6 +64,56 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
   useEffect(() => {
     return () => clearAITimeout();
   }, []);
+
+  // Load persisted PVC state on mount
+  useEffect(() => {
+    const persisted = loadState();
+    if (!persisted || persisted.mode !== 'PVC') return;
+    try {
+      setPhase(persisted.phase as Phase);
+      setP1(deserializePlayer(persisted.p1));
+      setP2(deserializePlayer(persisted.p2));
+      setP1PlaceIndex(persisted.p1PlaceIndex ?? 0);
+      setOrientation((persisted.orientation as Orientation) ?? 'H');
+      setWinner(persisted.winner ?? null);
+      setLastShotP1(persisted.lastShotP1 ?? null);
+      setLastShotP2(persisted.lastShotP2 ?? null);
+      setNames(persisted.names ?? { 2: 'Computer' });
+      if (persisted.ai?.mem) setAiMem(persisted.ai.mem);
+      setShowConfetti(persisted.phase === 'GAME_OVER' && !!persisted.winner);
+    } catch {
+      // ignore malformed persisted state
+    }
+  }, []);
+
+  // Persist state on changes
+  useEffect(() => {
+    const state: PersistedState = {
+      phase,
+      p1: serializePlayer(p1),
+      p2: serializePlayer(p2),
+      p1PlaceIndex,
+      p2PlaceIndex: 0,
+      orientation,
+      overlay: undefined,
+      winner,
+      names,
+      log: [],
+      lastShotP1,
+      lastShotP2,
+      sunkOnP1: null,
+      sunkOnP2: null,
+      lastSunkOnP1: null,
+      lastSunkOnP2: null,
+      sinkingOnP1: null,
+      sinkingOnP2: null,
+      lockUI: undefined,
+      pendingHandoff: null,
+      mode: 'PVC',
+      ai: { difficulty, mem: aiMem },
+    };
+    saveState(state);
+  }, [phase, p1, p2, p1PlaceIndex, orientation, winner, names, lastShotP1, lastShotP2, aiMem, difficulty]);
 
   const nextSize = useMemo<ShipSize | undefined>(() => {
     return FLEET_SIZES[p1PlaceIndex] as ShipSize | undefined;
@@ -160,6 +218,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
 
   function handleBackClick() {
     clearAITimeout();
+    clearState();
     onBack();
   }
 
