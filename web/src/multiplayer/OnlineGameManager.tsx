@@ -261,14 +261,15 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   }, [myPlayer, gameState, connectionState.status, sendAction]);
 
   const handleReset = useCallback(() => {
-    if (connectionState.status !== 'connected') {
-      return; // Do nothing when disconnected - restart doesn't make sense
+    if (connectionState.status !== 'connected' || !myPlayer) {
+      return; // Only allow when connected and player is known
     }
-    
+
     sendAction({
-      type: 'reset'
+      type: 'reset',
+      player: myPlayer
     });
-  }, [connectionState.status, sendAction]);
+  }, [connectionState.status, myPlayer, sendAction]);
 
   const handleOverlayClose = useCallback(() => {
     setOverlay({ shown: false, message: '' });
