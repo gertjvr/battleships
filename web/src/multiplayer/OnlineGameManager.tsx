@@ -265,7 +265,6 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
       return; // Do nothing when disconnected - restart doesn't make sense
     }
     
-    // TODO: Server needs to handle 'reset' action type
     sendAction({
       type: 'reset'
     });
@@ -471,9 +470,13 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
           opponentShots={myPlayer === 1 ? gameState.p2.shots : gameState.p1.shots}
           disabled={!isMyTurn || connectionState.status !== 'connected'}
           banner={isMyTurn ? "Take your shot! 🎯" : `Waiting for ${gameState.names[gameState.phase === 'P1_TURN' ? 1 : 2] || `Player ${gameState.phase === 'P1_TURN' ? 1 : 2}`}...`}
-          chat={gameState.log.map((entry, index) => {
+          chat={gameState.log
+            .filter((entry) => entry.type !== 'place')
+            .map((entry, index) => {
             let text = '';
-            if (entry.message) {
+            if (entry.type === 'playerReady') {
+              text = 'Ready ✅';
+            } else if (entry.message) {
               text = entry.message;
             } else if (entry.text) {
               text = entry.text;
@@ -487,7 +490,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
             }
             
             return {
-              who: entry.player === myPlayer ? 'me' : entry.player ? 'them' : 'system',
+              who: entry.type === 'playerReady' ? (entry.player === myPlayer ? 'me' : 'them') : (entry.player === myPlayer ? 'me' : entry.player ? 'them' : 'system'),
               text,
               key: `${entry.type}-${index}`
             };

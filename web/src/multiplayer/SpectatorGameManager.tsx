@@ -187,9 +187,13 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
         currentTurn={gameState.phase === 'P1_TURN' ? 1 : 2}
         phase={gameState.phase}
         spectatorCount={spectatorCount}
-        chat={gameState.log.map((entry, index) => {
+        chat={gameState.log
+          .filter((entry) => entry.type !== 'place')
+          .map((entry, index) => {
           let text = '';
-          if (entry.message) {
+          if (entry.type === 'playerReady') {
+            text = 'Ready ✅';
+          } else if (entry.message) {
             text = entry.message;
           } else if (entry.text) {
             text = entry.text;
