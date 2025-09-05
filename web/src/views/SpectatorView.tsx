@@ -81,9 +81,9 @@ export default function SpectatorView({
               mode="fire"
               opponentFleet={p2Fleet}
               shots={p1Shots}
-              highlightKey={lastShotP1}
-              sunkKeys={sunkOnP2}
-              sinkingKeys={sinkingOnP2}
+              highlightKey={lastShotP1 ?? undefined}
+              sunkKeys={sunkOnP2 ?? undefined}
+              sinkingKeys={sinkingOnP2 ?? undefined}
               disabled={true}
               showShips={false} // Spectators only see revealed information
             />
@@ -104,9 +104,9 @@ export default function SpectatorView({
               mode="fire"
               opponentFleet={p1Fleet}
               shots={p2Shots}
-              highlightKey={lastShotP2}
-              sunkKeys={sunkOnP1}
-              sinkingKeys={sinkingOnP1}
+              highlightKey={lastShotP2 ?? undefined}
+              sunkKeys={sunkOnP1 ?? undefined}
+              sinkingKeys={sinkingOnP1 ?? undefined}
               disabled={true}
               showShips={false} // Spectators only see revealed information
             />

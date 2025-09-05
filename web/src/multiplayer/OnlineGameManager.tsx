@@ -11,6 +11,7 @@ import SpectatorGameManager from './SpectatorGameManager';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
 import { enableAudio, isAudioEnabled, playWin } from '../sound';
+import { normalizeRoomCode } from '../utils/roomCode';
 
 type Phase = 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 
@@ -38,7 +39,7 @@ interface OnlineGameManagerProps {
 }
 
 export default function OnlineGameManager({ onBack, initialPlayerName, initialRoomCode = null, initialRole = 'player', initialPlayerHint = null }: OnlineGameManagerProps) {
-  const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode);
+  const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode ? normalizeRoomCode(initialRoomCode) : null);
   const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(initialPlayerHint);
@@ -501,16 +502,17 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
 
       {overlay.shown && (
         <SwapOverlay
+          shown={overlay.shown}
           message={overlay.message}
-          onClose={handleOverlayClose}
+          onReady={handleOverlayClose}
         />
       )}
 
       {showConfetti && <Confetti />}
       
-      {/* Footer connection status */}
-      <div className="fixed bottom-4 left-4">
-        <ConnectionStatus 
+      {/* Connection status */}
+      <div className="fixed top-4 right-4">
+        <ConnectionStatus
           status={connectionState.status}
           player={myPlayer}
           roomCode={roomCode || ''}

@@ -10,7 +10,7 @@
   "scripts": {
     "predev": "pnpm -C engine build",
     "dev": "pnpm -C web dev",
-    "prebuild": "pnpm -C engine build && pnpm -C web run codegen",
+    "prebuild": "pnpm -C engine build && pnpm -C web exec convex codegen",
     "build": "pnpm -C web build",
     "preview": "pnpm -C web preview"
   },

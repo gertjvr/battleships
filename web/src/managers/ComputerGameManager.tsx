@@ -79,7 +79,15 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
       setLastShotP1(persisted.lastShotP1 ?? null);
       setLastShotP2(persisted.lastShotP2 ?? null);
       setNames(persisted.names ?? { 2: 'Computer' });
-      if (persisted.ai?.mem) setAiMem(persisted.ai.mem);
+      if (persisted.ai?.mem) {
+        const mem = persisted.ai.mem;
+        setAiMem((prev) => ({
+          targetQueue: mem.targetQueue ?? prev.targetQueue,
+          cluster: mem.cluster ?? prev.cluster,
+          parity: mem.parity ?? prev.parity,
+          sizesLeft: mem.sizesLeft ?? prev.sizesLeft,
+        }));
+      }
       setShowConfetti(persisted.phase === 'GAME_OVER' && !!persisted.winner);
     } catch {
       // ignore malformed persisted state

@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatRoomCode } from '../utils/roomCode';
 
 interface ConnectionStatusProps {
   status: 'disconnected' | 'connecting' | 'connected';
@@ -42,7 +43,7 @@ export default function ConnectionStatus({ status, player, roomCode, error, p1Re
     <div className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-2 ${getStatusClass()}`}>
       <div className="w-2 h-2 rounded-full bg-current"></div>
       <div className="status-text">{getStatusText()}</div>
-      <div className="text-gray-500">({roomCode})</div>
+      <div className="text-gray-500">({formatRoomCode(roomCode)})</div>
     </div>
   );
 }

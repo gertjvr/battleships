@@ -1,4 +1,9 @@
 import React, { useState } from 'react';
+import {
+  generateRoomCode,
+  formatRoomCode,
+  normalizeRoomCode
+} from '../utils/roomCode';
 
 interface RoomSetupProps {
   onCreateRoom: (roomCode: string) => void;
@@ -10,10 +15,6 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
   const [mode, setMode] = useState<'create' | 'join' | 'spectate'>('create');
   const [roomCode, setRoomCode] = useState('');
 
-  const generateRoomCode = () => {
-    return Math.random().toString(36).slice(2, 8).toUpperCase();
-  };
-
   const handleCreate = () => {
     const code = generateRoomCode();
     onCreateRoom(code);
@@ -21,15 +22,17 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(roomCode.trim())) {
-      onJoinRoom(roomCode.trim().toUpperCase());
+    const code = normalizeRoomCode(roomCode);
+    if (code.length === 6) {
+      onJoinRoom(code);
     }
   };
 
   const handleSpectate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(roomCode.trim())) {
-      onSpectate(roomCode.trim().toUpperCase());
+    const code = normalizeRoomCode(roomCode);
+    if (code.length === 6) {
+      onSpectate(code);
     }
   };
 
@@ -71,13 +74,20 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
             <input
               type="text"
               value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const norm = normalizeRoomCode(e.target.value);
+                setRoomCode(formatRoomCode(norm));
+              }}
               placeholder="Enter room code"
-              maxLength={8}
-              pattern="[A-Z0-9]{6,8}"
+              maxLength={7}
+              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
               className="room-input"
             />
-            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="btn">
+            <button
+              type="submit"
+              disabled={normalizeRoomCode(roomCode).length !== 6}
+              className="btn"
+            >
               Join Room
             </button>
           </form>
@@ -89,13 +99,20 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
             <input
               type="text"
               value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const norm = normalizeRoomCode(e.target.value);
+                setRoomCode(formatRoomCode(norm));
+              }}
               placeholder="Enter room code"
-              maxLength={8}
-              pattern="[A-Z0-9]{6,8}"
+              maxLength={7}
+              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
               className="room-input"
             />
-            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="btn">
+            <button
+              type="submit"
+              disabled={normalizeRoomCode(roomCode).length !== 6}
+              className="btn"
+            >
               Spectate Game
             </button>
           </form>
