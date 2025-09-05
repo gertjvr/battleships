@@ -217,11 +217,11 @@ body {
   color: var(--color-gray-900);
 }
 
-.create-room, .join-room {
+.create-room, .join-room, .spectate-room {
   text-align: center;
 }
 
-.create-room p, .join-room p {
+.create-room p, .join-room p, .spectate-room p {
   margin-bottom: 1.5rem;
   color: var(--color-gray-600);
 }
@@ -241,7 +241,7 @@ body {
   background: var(--color-sky-700);
 }
 
-.join-room form {
+.join-room form, .spectate-room form {
   display: flex;
   gap: 1rem;
   justify-content: center;

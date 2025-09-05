@@ -77,7 +77,7 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
               pattern="[A-Z0-9]{6,8}"
               className="room-input"
             />
-            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="join-button">
+            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="btn">
               Join Room
             </button>
           </form>
@@ -95,7 +95,7 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
               pattern="[A-Z0-9]{6,8}"
               className="room-input"
             />
-            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="spectate-button">
+            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="btn">
               Spectate Game
             </button>
           </form>
