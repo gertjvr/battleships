@@ -1,30 +1,29 @@
-import { internalMutation } from './_generated/server';
+import { Migrations } from '@convex-dev/migrations';
+import { components } from './_generated/api';
+import type { DataModel } from './_generated/dataModel';
 
-// Backfill `updatedAt` for existing rooms.
-// Run once in prod, then switch `updatedAt` back to required in schema.
-export const backfillRoomsUpdatedAt = internalMutation({
-  args: {},
-  handler: async ctx => {
-    const now = Date.now();
-    const rooms = await ctx.db.query('rooms').collect();
-    let scanned = 0;
-    let updated = 0;
+export const migrations = new Migrations<DataModel>(components.migrations);
 
-    for (const room of rooms) {
-      scanned++;
-      const hasValid = typeof (room as any).updatedAt === 'number' && !Number.isNaN((room as any).updatedAt);
-      if (!hasValid) {
-        // Prefer a sensible historical timestamp if available; otherwise use `now`.
-        const candidates: number[] = [];
-        if (typeof (room as any).player1LastSeen === 'number') candidates.push((room as any).player1LastSeen);
-        if (typeof (room as any).player2LastSeen === 'number') candidates.push((room as any).player2LastSeen);
-        const fallback = candidates.length ? Math.max(...candidates) : now;
-        await ctx.db.patch(room._id, { updatedAt: fallback });
-        updated++;
-      }
-    }
-
-    return { scanned, updated };
+// Stateful migration: backfill missing/invalid `updatedAt` on rooms
+export const backfillRoomsUpdatedAt = migrations.define({
+  table: 'rooms',
+  migrateOne: (_ctx, room: any) => {
+    const hasValid = typeof room.updatedAt === 'number' && !Number.isNaN(room.updatedAt);
+    if (hasValid) return;
+    const candidates: number[] = [];
+    if (typeof room.player1LastSeen === 'number') candidates.push(room.player1LastSeen);
+    if (typeof room.player2LastSeen === 'number') candidates.push(room.player2LastSeen);
+    const fallback = candidates.length ? Math.max(...candidates) : Date.now();
+    return { updatedAt: fallback };
   }
 });
 
+// Runners for CLI usage
+export const runAll = migrations.runner([
+  // Add future migrations here in order
+  // e.g., internal.migrations.anotherMigration,
+  // For now, just the backfill
+  (backfillRoomsUpdatedAt as unknown) as any
+]);
+
+export const run = migrations.runner();
