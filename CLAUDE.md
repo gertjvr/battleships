@@ -7,11 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a monorepo for a Battleships game built with TypeScript:
 
 - `engine/` - Pure TypeScript game engine with immutable functions and no side effects
-- `web/` - React + Vite frontend that consumes the engine via workspace dependency  
-- `worker/` - Cloudflare Worker for online multiplayer with Durable Objects
+- `web/` - React + Vite frontend that consumes the engine via workspace dependency
+- `backend/` - Convex backend functions and schema for online multiplayer
 - Uses pnpm workspaces for dependency management
 
-The web and worker apps import from the engine using `@app/engine` workspace alias.
+The web and backend import from the engine using `@app/engine` workspace alias.
 
 ## Common Commands
 
@@ -20,12 +20,12 @@ Install workspace dependencies:
 pnpm install
 ```
 
-Development server (runs both worker and web in mock mode):
+Development server (runs Convex and web):
 ```bash
 pnpm dev
 ```
 
-Build packages (engine first, then worker):
+Build packages (engine then web):
 ```bash
 pnpm build
 ```
@@ -43,19 +43,16 @@ pnpm -C engine build
 # Build web app only (Vite build to dist/)
 pnpm -C web build
 
-# Build worker only (TypeScript compilation)
-pnpm -C worker build
-
 # Run web dev server directly
 pnpm -C web dev
 
-# Run worker locally with Wrangler
-pnpm -C worker dev
+# Run Convex locally (optional direct)
+pnpm -C backend dev
 ```
 
-Deploy worker to Cloudflare:
+Deploy Convex backend:
 ```bash
-pnpm -C worker deploy
+pnpm -C backend deploy
 ```
 
 ## Architecture Guidelines
@@ -75,12 +72,12 @@ pnpm -C worker deploy
 - Components: Grid rendering, overlays, confetti effects
 - Sound effects and visual feedback for game events
 - LocalStorage persistence for game state across sessions
-- Online multiplayer with WebSocket integration and mock mode for development
+- Online multiplayer using Convex reactive queries/mutations
 
-### Worker (`worker/src/`)
-- Cloudflare Worker with Durable Objects for authoritative game state
-- WebSocket handling for real-time multiplayer
-- Room-based multiplayer with 6-8 character room codes
+### Backend (`backend/`)
+- Convex functions for authoritative game state (`rooms.ts`)
+- Schema defined in `schema.ts`
+- Room-based multiplayer with 6–8 character room codes
 - Server-side move validation to prevent cheating
 - Session persistence for reconnection support
 
@@ -91,9 +88,9 @@ pnpm -C worker deploy
 - `web/src/persistence.ts` - Save/load game state
 - `web/src/views/PlacementView.tsx` - Ship placement UI
 - `web/src/views/PlayView.tsx` - Gameplay UI with dual grids
-- `web/src/multiplayer/` - Online multiplayer logic and WebSocket handling
-- `worker/src/index.ts` - Cloudflare Worker entry point
-- `worker/src/GameRoom.ts` - Durable Object for game state management
+- `web/src/multiplayer/` - Online multiplayer logic via Convex hook
+- `backend/rooms.ts` - Backend mutations/queries
+- `backend/schema.ts` - Data model
 
 ## Game Modes & Flow
 
@@ -118,27 +115,22 @@ pnpm -C worker deploy
 ## Testing
 
 **Current Setup:**
-- Playwright configured for multiplayer E2E testing (`test-multiplayer.js`)
-- Run E2E tests: `npx playwright test`
+- Add tests as needed; no default E2E is configured for Convex
 
 **Framework Recommendations:**
 - Engine: Vitest unit tests in `engine/src/*.test.ts`
 - Web: Vitest + React Testing Library in `web/src/**/*.test.tsx`
-- Worker: Vitest for Durable Object testing
+- Backend: Convex function tests (if introduced)
 
 When adding tests, add scripts to individual `package.json` files and run selectively with `pnpm -C <workspace> test`.
 
 ## Development Environment
 
-**Mock vs Production:**
-- Development runs with `VITE_MOCK_WS=true` (mock WebSocket server)
-- Production requires deployed Cloudflare Worker and `VITE_MOCK_WS=false`
-- Environment variables in `web/.env.development` and `web/.env.production`
+**Environment:**
+- Dev: `pnpm dev` runs Convex and launches Vite with `VITE_CONVEX_URL` injected
+- Prod: Deploy Convex (`pnpm -C backend deploy`) and build web with `VITE_CONVEX_URL`
 
-**Deployment:**
-1. Deploy worker: `pnpm -C worker deploy` 
-2. Update `web/.env.production` with worker URL
-3. Build and deploy web app: `pnpm -C web build`
+See `docs/convex.md` for full details.
 
 ## Agent Tools
 - Serena (code): Use to locate symbols and navigate code quickly. Examples: find a function by name (`find_symbol name_path:"placeShip" within engine/src`), get file overviews (`get_symbols_overview web/src/App.tsx`), and search by pattern for usages (e.g., `coordsFor`). Prefer symbol-based queries over raw text.

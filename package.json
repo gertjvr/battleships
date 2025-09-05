@@ -5,12 +5,13 @@
   "packageManager": "pnpm@9.7.0",
   "workspaces": [
     "web",
-    "engine",
-    "convex"
+    "engine"
   ],
   "scripts": {
-    "dev": "concurrently \"pnpm -C convex dev\" \"pnpm -C web dev\"",
-    "build": "pnpm -C engine build && pnpm -C web build",
+    "predev": "pnpm -C engine build",
+    "dev": "pnpm -C web dev",
+    "prebuild": "pnpm -C engine build && pnpm -C web run codegen",
+    "build": "pnpm -C web build",
     "preview": "pnpm -C web preview"
   },
   "devDependencies": {

@@ -5,3 +5,5 @@ dist
 
 worker/.wrangler
 .serena
+
+.env.local

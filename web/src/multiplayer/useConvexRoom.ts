@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { api } from '@convex/_generated/api';
 
 interface ConnectionState {
   status: 'disconnected' | 'connecting' | 'connected';
@@ -26,7 +26,9 @@ export function useConvexRoom(room: string, isSpectator = false): ConvexHook {
     isSpectator
   });
 
-  const roomDoc = useQuery(room ? api.rooms.getRoom : undefined, room ? { roomCode: room } : 'skip');
+  // Always pass a valid args object to satisfy Convex validators
+  // When no room is selected, query with an empty roomCode which returns null
+  const roomDoc = useQuery(api.rooms.getRoom, { roomCode: room || '' });
   const joinRoom = useMutation(api.rooms.joinRoom);
   const applyAction = useMutation(api.rooms.applyAction);
 
@@ -36,7 +38,18 @@ export function useConvexRoom(room: string, isSpectator = false): ConvexHook {
       return;
     }
     let cancelled = false;
-    joinRoom({ roomCode: room, sessionToken: connectionState.sessionToken || undefined })
+    // Ensure a stable session token across possible React StrictMode double-invocation
+    // Generate one up front if missing so repeated calls use the same token.
+    const storageKey = `kids-battleships:session:${room}`;
+    const existing = connectionState.sessionToken || localStorage.getItem(storageKey);
+    const tokenToUse = existing || crypto.randomUUID();
+    if (!existing) {
+      // Optimistically record the token so any concurrent attempt reuses it
+      localStorage.setItem(storageKey, tokenToUse);
+      setConnectionState(prev => ({ ...prev, sessionToken: tokenToUse }));
+    }
+
+    joinRoom({ roomCode: room, sessionToken: tokenToUse })
       .then(res => {
         if (cancelled) return;
         setConnectionState(prev => ({
@@ -45,7 +58,8 @@ export function useConvexRoom(room: string, isSpectator = false): ConvexHook {
           player: res.player,
           sessionToken: res.sessionToken
         }));
-        localStorage.setItem(`kids-battleships:session:${room}`, res.sessionToken);
+        // Server may normalize/replace the token; persist the authoritative value
+        localStorage.setItem(storageKey, res.sessionToken);
       })
       .catch(err => {
         if (cancelled) return;
