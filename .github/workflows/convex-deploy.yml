@@ -1,0 +1,55 @@
+name: Deploy Convex
+
+on:
+  push:
+    branches:
+      - '**'
+
+concurrency:
+  group: convex-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Convex
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build engine (required by Convex functions)
+        run: pnpm -C engine build
+
+      - name: Select deployment env
+        id: select_env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "deploy_env=prod" >> "$GITHUB_OUTPUT"
+            echo "convex_key=${{ secrets.CONVEX_DEPLOY_KEY_PROD }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_env=dev" >> "$GITHUB_OUTPUT"
+            echo "convex_key=${{ secrets.CONVEX_DEPLOY_KEY_DEV }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy Convex
+        env:
+          # Authenticates the deploy; create two deployment keys in Convex
+          # and add them to repo secrets as CONVEX_DEPLOY_KEY_PROD and CONVEX_DEPLOY_KEY_DEV
+          CONVEX_DEPLOY_KEY: ${{ steps.select_env.outputs.convex_key }}
+          # Targets the desired deployment (e.g. "prod" or "dev")
+          CONVEX_DEPLOYMENT: ${{ steps.select_env.outputs.deploy_env }}
+        run: |
+          # Non-interactive deploy via pnpm exec
+          pnpm -C web exec convex deploy --yes

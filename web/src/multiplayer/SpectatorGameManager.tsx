@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useConvexRoom } from './useConvexRoom';
 import SpectatorView from '../views/SpectatorView';
 import ConnectionStatus from '../components/ConnectionStatus';
 import HelpPopover from '../components/HelpPopover';
@@ -32,47 +32,30 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
   const [spectatorCount, setSpectatorCount] = useState<number>(0);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
 
-  const { connectionState, lastMessage } = useWebSocket(roomCode, true);
+  const { connectionState, gameState: serverState } = useConvexRoom(roomCode, true);
 
-  // Handle incoming WebSocket messages
   React.useEffect(() => {
-    if (!lastMessage) return;
-
-    if (lastMessage.type === 'state') {
-      const state = lastMessage.payload;
-      if (state) {
-        const deserializedState: GameState = {
-          ...state,
-          p1: {
-            fleet: state.p1.fleet.map((ship: any) => ({
-              ...ship,
-              hits: new Set(ship.hits)
-            })),
-            shots: new Set(state.p1.shots)
-          },
-          p2: {
-            fleet: state.p2.fleet.map((ship: any) => ({
-              ...ship,
-              hits: new Set(ship.hits)
-            })),
-            shots: new Set(state.p2.shots)
-          }
-        };
-        setGameState(deserializedState);
-        
-        if (lastMessage.meta?.spectatorCount !== undefined) {
-          setSpectatorCount(lastMessage.meta.spectatorCount);
-        }
+    if (!serverState) return;
+    const state = serverState;
+    const deserializedState: GameState = {
+      ...state,
+      p1: {
+        fleet: state.p1.fleet.map((ship: any) => ({
+          ...ship,
+          hits: new Set(ship.hits)
+        })),
+        shots: new Set(state.p1.shots)
+      },
+      p2: {
+        fleet: state.p2.fleet.map((ship: any) => ({
+          ...ship,
+          hits: new Set(ship.hits)
+        })),
+        shots: new Set(state.p2.shots)
       }
-    } else if (lastMessage.type === 'error') {
-      if (lastMessage.payload?.code === 'ROOM_FULL') {
-        alert('Room is full. Please try a different room.');
-        setRoomCode('');
-      } else {
-        alert(lastMessage.payload?.message || 'Connection error');
-      }
-    }
-  }, [lastMessage]);
+    };
+    setGameState(deserializedState);
+  }, [serverState]);
 
   const handleJoinSpectator = useCallback(() => {
     if (inputRoomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(inputRoomCode.trim())) {
@@ -204,9 +187,13 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
         currentTurn={gameState.phase === 'P1_TURN' ? 1 : 2}
         phase={gameState.phase}
         spectatorCount={spectatorCount}
-        chat={gameState.log.map((entry, index) => {
+        chat={gameState.log
+          .filter((entry) => entry.type !== 'place')
+          .map((entry, index) => {
           let text = '';
-          if (entry.message) {
+          if (entry.type === 'playerReady') {
+            text = 'Ready ✅';
+          } else if (entry.message) {
             text = entry.message;
           } else if (entry.text) {
             text = entry.text;

@@ -4,14 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"convex dev\" \"sleep 5 && vite\" --names \"convex,vite\" --prefix-colors \"blue,green\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "convex": "convex",
+    "codegen": "convex codegen"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@app/engine": "workspace:*"
+    "@app/engine": "workspace:*",
+    "convex": "^1.10.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
