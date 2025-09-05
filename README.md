@@ -13,9 +13,10 @@ A multiplayer Battleships game built with TypeScript, React, and Convex. Feature
 ```
 engine/   # TypeScript game engine (pure functions)
   src/    # Game logic and types
-web/      # React + Vite frontend
+web/      # React + Vite frontend and Convex backend
   src/    # UI components, views, multiplayer logic
-backend/  # Convex backend functions and schema for online multiplayer
+  convex/ # Backend functions and schema for online multiplayer
+docs/     # Documentation and guides
 ```
 
 - Language: TypeScript (strict, ES modules)
@@ -61,7 +62,7 @@ Component builds:
 
 ```bash
 # Type-check and emit engine to engine/dist
-pnm -C engine build
+pnpm -C engine build
 
 # Build the web app to web/dist
 pnpm -C web build
