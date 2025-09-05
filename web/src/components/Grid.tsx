@@ -15,6 +15,16 @@ function shipAt(fleet: Ship[] | undefined, c: Coord): Ship | undefined {
   return fleet.find((s) => s.coords.some((x) => keyOf(x) === k));
 }
 
+function getShipEmoji(size: number): string {
+  switch (size) {
+    case 2: return '🚤'; // Destroyer - speedboat
+    case 3: return '🛥️'; // Cruiser - motor boat  
+    case 4: return '⛵'; // Battleship - sailboat
+    case 5: return '🚢'; // Carrier - ship
+    default: return '🛶'; // Submarine - canoe
+  }
+}
+
 type Mode = 'place' | 'fire' | 'display';
 
 type Props = {
@@ -50,11 +60,23 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
       if (mode === 'display') {
         const shipHere = hasCoord(fleet, coord);
         if (shipHere && showShips) {
-          cls += ' bg-slate-300 grid-cell-ship ship-outline';
+          cls += ' bg-gradient-to-br from-blue-200 to-blue-300 grid-cell-ship ship-outline text-2xl';
           const s = shipAt(fleet, coord);
           if (s && fleet) {
-            const idx = fleet.findIndex((f) => f.id === s.id);
-            cls += ` ship-p${((idx % 6) + 6) % 6}`;
+            // Show emoji only on the first cell of each ship (top-left position)
+            const isFirstCell = s.coords.reduce((first, current) => {
+              const currentKey = keyOf(current);
+              const firstKey = keyOf(first);
+              // Compare row first, then column to find top-left cell
+              if (current.r < first.r || (current.r === first.r && current.c < first.c)) {
+                return current;
+              }
+              return first;
+            });
+            if (keyOf(coord) === keyOf(isFirstCell)) {
+              content = getShipEmoji(s.size);
+            }
+            
             // Determine outer edges for inner outline
             const up: Coord = { r: r - 1, c };
             const right: Coord = { r, c: c + 1 };
@@ -72,12 +94,12 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
         }
         if (shots?.has(k)) {
           if (shipHere) {
-            cls += ' bg-rose-500 text-white animate-hit';
-            content = '💥';
+            cls += ' bg-gradient-to-br from-orange-400 to-red-500 text-white animate-hit text-2xl';
+            content = '💰'; // Treasure chest for hits
           } else {
             // Opponent guessed here but it's a miss
-            cls += ' bg-sky-200 animate-miss';
-            content = '💧';
+            cls += ' bg-gradient-to-br from-blue-300 to-cyan-400 animate-miss text-2xl';
+            content = '🌊'; // Ocean wave for misses
           }
         }
         if (highlightKey && shots?.has(k) && highlightKey === k) {
@@ -90,8 +112,8 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
         if (shots?.has(k)) {
           const hit = hasCoord(opponentFleet, coord);
           if (hit) {
-            cls += ' bg-rose-400 text-white animate-hit';
-            content = '💥';
+            cls += ' bg-gradient-to-br from-orange-400 to-red-500 text-white animate-hit text-2xl';
+            content = '💰'; // Treasure chest for hits
             // Only outline once the ship is sunk (including during sinking animation)
             const isSunkCell = !!(sunkKeys?.has(k) || lastSunkKeys?.has(k) || sinkingKeys?.has(k));
             if (isSunkCell) {
@@ -116,8 +138,8 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
               }
             }
           } else {
-            cls += ' bg-sky-200 animate-miss';
-            content = '💧';
+            cls += ' bg-gradient-to-br from-blue-300 to-cyan-400 animate-miss text-2xl';
+            content = '🌊'; // Ocean wave for misses
           }
         }
         if (highlightKey && shots?.has(k) && highlightKey === k) {
@@ -129,11 +151,20 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
       } else if (mode === 'place') {
         const shipHere = hasCoord(fleet, coord);
         if (shipHere) {
-          cls += ' bg-slate-400 grid-cell-ship ship-outline';
+          cls += ' bg-gradient-to-br from-blue-200 to-blue-300 grid-cell-ship ship-outline text-2xl';
           const s = shipAt(fleet, coord);
           if (s && fleet) {
-            const idx = fleet.findIndex((f) => f.id === s.id);
-            cls += ` ship-p${((idx % 6) + 6) % 6}`;
+            // Show emoji only on the first cell of each ship (top-left position)
+            const isFirstCell = s.coords.reduce((first, current) => {
+              if (current.r < first.r || (current.r === first.r && current.c < first.c)) {
+                return current;
+              }
+              return first;
+            });
+            if (keyOf(coord) === keyOf(isFirstCell)) {
+              content = getShipEmoji(s.size);
+            }
+            
             const up: Coord = { r: r - 1, c };
             const right: Coord = { r, c: c + 1 };
             const down: Coord = { r: r + 1, c };
