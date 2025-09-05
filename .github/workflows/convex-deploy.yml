@@ -44,7 +44,6 @@ jobs:
           fi
 
       - name: Deploy Convex
-        working-directory: web
         env:
           # Authenticates the deploy; create two deployment keys in Convex
           # and add them to repo secrets as CONVEX_DEPLOY_KEY_PROD and CONVEX_DEPLOY_KEY_DEV
@@ -52,5 +51,5 @@ jobs:
           # Targets the desired deployment (e.g. "prod" or "dev")
           CONVEX_DEPLOYMENT: ${{ steps.select_env.outputs.deploy_env }}
         run: |
-          # Non-interactive deploy via package script
-          pnpm run convex -- deploy --yes
+          # Non-interactive deploy via pnpm exec
+          pnpm -C web exec convex deploy --yes
