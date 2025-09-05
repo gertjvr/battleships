@@ -4,6 +4,7 @@ import ComputerGameManager from './managers/ComputerGameManager';
 import OnlineGameManager from './multiplayer/OnlineGameManager';
 import HomeView from './views/HomeView';
 import type { Difficulty } from './persistence';
+import { normalizeRoomCode } from './utils/roomCode';
 
 export default function App() {
   const [route, setRoute] = useState(() => window.location.hash.slice(1) || '/');
@@ -46,7 +47,8 @@ export default function App() {
     return <ComputerGameManager onBack={() => navigate('/')} difficulty={difficulty} />;
   }
   if (baseRoute === '/online') {
-    const room = query.get('room') || undefined;
+    const roomParam = query.get('room');
+    const room = roomParam ? normalizeRoomCode(roomParam) : undefined;
     const role = (query.get('role') as 'player' | 'spectator' | null) || undefined;
     const asPlayer = query.get('as');
     const initialPlayer = asPlayer === '1' ? 1 : asPlayer === '2' ? 2 : undefined;

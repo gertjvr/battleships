@@ -27,6 +27,8 @@ interface GameState {
   log: Array<{ type: string; player?: number; [key: string]: any }>;
 }
 
+const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
+
 interface ActionPayload {
   type:
     | 'place'
@@ -279,6 +281,7 @@ export const joinRoom = mutation({
       .query('rooms')
       .withIndex('roomCode', q => q.eq('roomCode', roomCode))
       .unique();
+    const now = Date.now();
     if (!room) {
       const id = await ctx.db.insert('rooms', {
         roomCode,
@@ -286,7 +289,8 @@ export const joinRoom = mutation({
         player1Session: undefined,
         player2Session: undefined,
         names: {},
-        recentActionIds: []
+        recentActionIds: [],
+        updatedAt: now
       });
       room = await ctx.db.get(id);
     }
@@ -295,22 +299,53 @@ export const joinRoom = mutation({
       throw new Error('Failed to create or retrieve room');
     }
 
+    // Expire stale sessions
+    if (
+      room.player1Session &&
+      room.player1LastSeen &&
+      now - room.player1LastSeen > SESSION_TIMEOUT_MS
+    ) {
+      await ctx.db.patch(room._id, {
+        player1Session: undefined,
+        player1LastSeen: undefined
+      });
+      room.player1Session = undefined;
+    }
+    if (
+      room.player2Session &&
+      room.player2LastSeen &&
+      now - room.player2LastSeen > SESSION_TIMEOUT_MS
+    ) {
+      await ctx.db.patch(room._id, {
+        player2Session: undefined,
+        player2LastSeen: undefined
+      });
+      room.player2Session = undefined;
+    }
+
     let player: 1 | 2;
     if (sessionToken && sessionToken === room.player1Session) {
       player = 1;
+      await ctx.db.patch(room._id, { updatedAt: now, player1LastSeen: now });
     } else if (sessionToken && sessionToken === room.player2Session) {
       player = 2;
+      await ctx.db.patch(room._id, { updatedAt: now, player2LastSeen: now });
     } else if (!room.player1Session) {
       player = 1;
-      // If the client supplied a sessionToken (e.g., to be idempotent across
-      // React StrictMode double-invocation), prefer that; otherwise generate one.
       sessionToken = sessionToken || crypto.randomUUID();
-      await ctx.db.patch(room._id, { player1Session: sessionToken });
+      await ctx.db.patch(room._id, {
+        player1Session: sessionToken,
+        player1LastSeen: now,
+        updatedAt: now
+      });
     } else if (!room.player2Session) {
       player = 2;
-      // Prefer a provided token to support idempotent re-tries.
       sessionToken = sessionToken || crypto.randomUUID();
-      await ctx.db.patch(room._id, { player2Session: sessionToken });
+      await ctx.db.patch(room._id, {
+        player2Session: sessionToken,
+        player2LastSeen: now,
+        updatedAt: now
+      });
     } else {
       throw new Error('ROOM_FULL');
     }
@@ -364,7 +399,35 @@ export const applyAction = mutation({
     if (recent.length > 100) {
       recent.splice(0, recent.length - 100);
     }
-    await ctx.db.patch(room._id, { state: serialized, recentActionIds: recent });
+    const now = Date.now();
+    const patch: any = {
+      state: serialized,
+      recentActionIds: recent,
+      updatedAt: now,
+      ...(player === 1 ? { player1LastSeen: now } : { player2LastSeen: now })
+    };
+    await ctx.db.patch(room._id, patch);
     return { state: serialized };
+  }
+});
+
+export const cleanupRooms = mutation({
+  args: {},
+  handler: async ctx => {
+    const now = Date.now();
+    const dayAgo = now - 24 * 60 * 60 * 1000;
+    const finishedAgo = now - 60 * 60 * 1000;
+    const rooms = await ctx.db.query('rooms').collect();
+    for (const room of rooms) {
+      const last = room.updatedAt || 0;
+      const state = deserializeState(room.state);
+      if (state.phase === 'GAME_OVER' && last < finishedAgo) {
+        await ctx.db.delete(room._id);
+        continue;
+      }
+      if (last < dayAgo) {
+        await ctx.db.delete(room._id);
+      }
+    }
   }
 });

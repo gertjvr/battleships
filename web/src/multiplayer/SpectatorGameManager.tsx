@@ -4,6 +4,7 @@ import SpectatorView from '../views/SpectatorView';
 import ConnectionStatus from '../components/ConnectionStatus';
 import HelpPopover from '../components/HelpPopover';
 import { enableAudio, isAudioEnabled } from '../sound';
+import { formatRoomCode, normalizeRoomCode } from '../utils/roomCode';
 
 interface GameState {
   phase: 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
@@ -27,7 +28,7 @@ interface SpectatorGameManagerProps {
 
 export default function SpectatorGameManager({ onBack, initialRoomCode }: SpectatorGameManagerProps) {
   const [roomCode, setRoomCode] = useState<string>(initialRoomCode || '');
-  const [inputRoomCode, setInputRoomCode] = useState<string>(initialRoomCode || '');
+  const [inputRoomCode, setInputRoomCode] = useState<string>(initialRoomCode ? formatRoomCode(initialRoomCode) : '');
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [spectatorCount, setSpectatorCount] = useState<number>(0);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
@@ -58,8 +59,9 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
   }, [serverState]);
 
   const handleJoinSpectator = useCallback(() => {
-    if (inputRoomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(inputRoomCode.trim())) {
-      setRoomCode(inputRoomCode.trim().toUpperCase());
+    const code = normalizeRoomCode(inputRoomCode);
+    if (code.length === 6) {
+      setRoomCode(code);
     }
   }, [inputRoomCode]);
 
@@ -88,16 +90,20 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
             <input
               type="text"
               value={inputRoomCode}
-              onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const norm = normalizeRoomCode(e.target.value);
+                setInputRoomCode(formatRoomCode(norm));
+              }}
               placeholder="Enter room code"
-              maxLength={8}
+              maxLength={7}
+              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           
           <button 
             onClick={handleJoinSpectator}
-            disabled={!inputRoomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(inputRoomCode.trim())}
+            disabled={normalizeRoomCode(inputRoomCode).length !== 6}
             className="btn w-full"
           >
             Start Spectating
@@ -113,7 +119,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
       <div className="spectator-game">
         <h2 className="text-2xl font-bold text-center mb-4">Kids Battleships - Spectator Mode</h2>
         <div className="flex items-center justify-between mb-4">
-          <ConnectionStatus 
+          <ConnectionStatus
             status={connectionState.status}
             player={null}
             roomCode={roomCode}
@@ -136,7 +142,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
         {connectionState.status === 'connected' && (
           <div className="text-center py-8">
             <p className="text-lg">Loading game...</p>
-            <p className="text-sm text-slate-600 mt-2">Room: {roomCode}</p>
+            <p className="text-sm text-slate-600 mt-2">Room: {formatRoomCode(roomCode)}</p>
           </div>
         )}
       </div>
@@ -156,7 +162,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
           >
             Back to Main Menu
           </button>
-          <span className="text-sm text-slate-600">Room: {roomCode}</span>
+          <span className="text-sm text-slate-600">Room: {formatRoomCode(roomCode)}</span>
         </div>
         
         <div className="flex items-center gap-2">
@@ -214,9 +220,9 @@ export default function SpectatorGameManager({ onBack, initialRoomCode }: Specta
         })}
       />
       
-      {/* Footer connection status */}
-      <div className="fixed bottom-4 left-4">
-        <ConnectionStatus 
+      {/* Connection status */}
+      <div className="fixed top-4 right-4">
+        <ConnectionStatus
           status={connectionState.status}
           player={null}
           roomCode={roomCode}
