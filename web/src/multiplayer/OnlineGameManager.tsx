@@ -502,8 +502,9 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
 
       {overlay.shown && (
         <SwapOverlay
+          shown={overlay.shown}
           message={overlay.message}
-          onClose={handleOverlayClose}
+          onReady={handleOverlayClose}
         />
       )}
 

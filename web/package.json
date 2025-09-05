@@ -7,18 +7,15 @@
     "dev": "concurrently \"convex dev\" \"sleep 5 && vite\" --names \"convex,vite\" --prefix-colors \"blue,green\"",
     "build": "vite build",
     "preview": "vite preview",
-    "convex": "convex",
-    "codegen": "convex codegen",
     "migrate": "convex run migrations:runAll",
-    "migrate:prod": "convex run migrations:runAll --prod",
-    "deploy:prod": "convex deploy && pnpm migrate:prod"
+    "deploy": "convex deploy && migrate"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@app/engine": "workspace:*",
     "convex": "^1.10.0",
-    "@convex-dev/migrations": "^0.9.9"
+    "@convex-dev/migrations": "^0.2.9"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
