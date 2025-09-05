@@ -195,6 +195,73 @@ function applyActionToState(state: GameState, payload: ActionPayload): GameState
   return newState;
 }
 
+function isPlayerTurn(state: GameState, player: 1 | 2): boolean {
+  return (player === 1 && state.phase === 'P1_TURN') || (player === 2 && state.phase === 'P2_TURN');
+}
+
+function shotKey(c: { r: number; c: number }): string {
+  return `${c.r},${c.c}`;
+}
+
+function validateAction(state: GameState, payload: ActionPayload): string | null {
+  const { type, player } = payload;
+
+  // Disallow further gameplay actions after game over, but allow reset/name updates
+  if (state.phase === 'GAME_OVER' && type !== 'reset' && type !== 'setName') {
+    return 'GAME_OVER';
+  }
+
+  switch (type) {
+    case 'place': {
+      if (state.phase !== 'BOTH_PLACE') return 'INVALID_PHASE';
+      const ready = player === 1 ? state.p1Ready : state.p2Ready;
+      if (ready) return 'ALREADY_READY';
+      const placeIndex = player === 1 ? state.p1PlaceIndex : state.p2PlaceIndex;
+      if (placeIndex >= FLEET_SIZES.length) return 'PLACEMENT_COMPLETE';
+      // Enforce placing ships in the expected order
+      if (payload.size !== FLEET_SIZES[placeIndex]) return 'WRONG_SHIP_SIZE';
+      return null;
+    }
+    case 'donePlacement': {
+      if (state.phase !== 'BOTH_PLACE') return 'INVALID_PHASE';
+      const ready = player === 1 ? state.p1Ready : state.p2Ready;
+      if (ready) return 'ALREADY_READY';
+      const placeIndex = player === 1 ? state.p1PlaceIndex : state.p2PlaceIndex;
+      if (placeIndex < FLEET_SIZES.length) return 'INCOMPLETE_FLEET';
+      return null;
+    }
+    case 'fire': {
+      if (!(state.p1Ready && state.p2Ready)) return 'NOT_READY';
+      if (!isPlayerTurn(state, player)) return 'NOT_YOUR_TURN';
+      if (typeof payload.r !== 'number' || typeof payload.c !== 'number') return 'INVALID_TARGET';
+      if (payload.r < 0 || payload.r >= 10 || payload.c < 0 || payload.c >= 10) return 'OUT_OF_BOUNDS';
+      const shots = player === 1 ? state.p1.shots : state.p2.shots;
+      if (shots.has(shotKey({ r: payload.r, c: payload.c }))) return 'DUPLICATE_SHOT';
+      return null;
+    }
+    case 'undo': {
+      if (state.phase !== 'BOTH_PLACE') return 'INVALID_PHASE';
+      const ready = player === 1 ? state.p1Ready : state.p2Ready;
+      if (ready) return 'ALREADY_READY';
+      const placeIndex = player === 1 ? state.p1PlaceIndex : state.p2PlaceIndex;
+      if (placeIndex <= 0) return 'NOTHING_TO_UNDO';
+      return null;
+    }
+    case 'setOrientation': {
+      if (state.phase !== 'BOTH_PLACE') return 'INVALID_PHASE';
+      const ready = player === 1 ? state.p1Ready : state.p2Ready;
+      if (ready) return 'ALREADY_READY';
+      if (payload.orientation !== 'H' && payload.orientation !== 'V') return 'INVALID_ORIENTATION';
+      return null;
+    }
+    case 'setName':
+    case 'reset':
+      return null;
+    default:
+      return 'UNKNOWN_ACTION';
+  }
+}
+
 export const getRoom = query({
   args: { roomCode: v.string() },
   handler: async (ctx, { roomCode }) => {
@@ -287,6 +354,10 @@ export const applyAction = mutation({
     }
 
     const state = deserializeState(room.state);
+    const validationError = validateAction(state, payload as ActionPayload);
+    if (validationError) {
+      throw new Error(`INVALID_ACTION:${validationError}`);
+    }
     const newState = applyActionToState(state, payload);
     const serialized = serializeState(newState);
     const recent = id ? [...room.recentActionIds, id] : room.recentActionIds.slice();
