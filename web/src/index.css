@@ -152,13 +152,16 @@ body {
 }
 .animate-sunk { animation: sunk-pulse 500ms var(--ease-snappy, ease-out); }
 
-/* Ship cells now use emoji icons instead of patterns */
-.grid-cell-ship {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-}
+/* Strong inner outline so adjacent ship cells remain visually separated */
+.grid-cell-ship { box-shadow: inset 0 0 0 1px var(--color-slate-700); }
+
+/* Subtle per-ship patterns to distinguish adjacent ships */
+.ship-p0 { background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p1 { background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p2 { background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p3 { background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p4 { background-image: repeating-linear-gradient(135deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
+.ship-p5 { background-image: repeating-linear-gradient(22.5deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px); }
 
 /* Per-ship inner outline that draws only on outer edges */
 .ship-outline { position: relative; }

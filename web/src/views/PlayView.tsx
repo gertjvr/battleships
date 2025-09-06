@@ -1,7 +1,7 @@
 import React from 'react';
 import Grid from '../components/Grid';
 import ChatHistory, { ChatEntry } from '../components/ChatHistory';
-import type { Ship } from '@app/engine';
+import type { Ship, Coord } from '@app/engine';
 
 type Props = {
   currentPlayer: 1 | 2;
@@ -26,9 +26,11 @@ type Props = {
   onCta?: () => void;
   lastSunkOnOpponent?: Set<string> | null;
   lastSunkOnSelf?: Set<string> | null;
+  hoverCoord?: Coord | null;
+  onHover?: (c: Coord | null) => void;
 };
 
-export default function PlayView({ currentPlayer, currentPlayerName, meLabel, themLabel, opponentFleet, attackerShots, onFire, ownFleet, opponentShots, banner, lastAttackerShot, lastOpponentShot, sunkOnOpponent, sunkOnSelf, sinkingOnOpponent, sinkingOnSelf, disabled, ctaLabel, ctaMessage, onCta, lastSunkOnOpponent, lastSunkOnSelf, chat }: Props & { chat?: ChatEntry[] }) {
+export default function PlayView({ currentPlayer, currentPlayerName, meLabel, themLabel, opponentFleet, attackerShots, onFire, ownFleet, opponentShots, banner, lastAttackerShot, lastOpponentShot, sunkOnOpponent, sunkOnSelf, sinkingOnOpponent, sinkingOnSelf, disabled, ctaLabel, ctaMessage, onCta, lastSunkOnOpponent, lastSunkOnSelf, hoverCoord, onHover, chat }: Props & { chat?: ChatEntry[] }) {
   const isComputer = !!(currentPlayerName && /computer/i.test(currentPlayerName));
   return (
     <div className="space-y-4">
@@ -58,6 +60,8 @@ export default function PlayView({ currentPlayer, currentPlayerName, meLabel, th
               lastSunkKeys={lastSunkOnOpponent ?? undefined}
               disabled={disabled}
               onCell={({ r, c }) => onFire(r, c)}
+              hoverCoord={hoverCoord}
+              onHover={onHover}
             />
           </div>
         </div>

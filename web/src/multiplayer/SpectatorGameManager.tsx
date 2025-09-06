@@ -4,6 +4,7 @@ import SpectatorView from '../views/SpectatorView';
 import ConnectionStatus from '../components/ConnectionStatus';
 import HelpPopover from '../components/HelpPopover';
 import { enableAudio, isAudioEnabled } from '../sound';
+import { formatRoomCode, normalizeRoomCode } from '../utils/roomCode';
 
 interface GameState {
   phase: 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
@@ -21,11 +22,12 @@ interface GameState {
 
 interface SpectatorGameManagerProps {
   onBack: () => void;
+  initialRoomCode?: string | null;
 }
 
-export default function SpectatorGameManager({ onBack }: SpectatorGameManagerProps) {
-  const [roomCode, setRoomCode] = useState<string>('');
-  const [inputRoomCode, setInputRoomCode] = useState<string>('');
+export default function SpectatorGameManager({ onBack, initialRoomCode = null }: SpectatorGameManagerProps) {
+  const [roomCode, setRoomCode] = useState<string>(initialRoomCode ? normalizeRoomCode(initialRoomCode) : '');
+  const [inputRoomCode, setInputRoomCode] = useState<string>(initialRoomCode ? formatRoomCode(initialRoomCode) : '');
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [spectatorCount, setSpectatorCount] = useState<number>(0);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
@@ -73,8 +75,13 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
   }, [lastMessage]);
 
   const handleJoinSpectator = useCallback(() => {
-    if (inputRoomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(inputRoomCode.trim())) {
-      setRoomCode(inputRoomCode.trim().toUpperCase());
+    const normalized = normalizeRoomCode(inputRoomCode);
+    if (normalized.length === 6) {
+      setRoomCode(normalized);
+      const params = new URLSearchParams();
+      params.set('room', normalized);
+      params.set('role', 'spectator');
+      window.location.hash = `/online?${params.toString()}`;
     }
   }, [inputRoomCode]);
 
@@ -102,16 +109,17 @@ export default function SpectatorGameManager({ onBack }: SpectatorGameManagerPro
             <input
               type="text"
               value={inputRoomCode}
-              onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
+              onChange={(e) => setInputRoomCode(formatRoomCode(e.target.value))}
               placeholder="Enter room code"
-              maxLength={8}
+              maxLength={7}
+              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           
           <button 
             onClick={handleJoinSpectator}
-            disabled={!inputRoomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(inputRoomCode.trim())}
+            disabled={normalizeRoomCode(inputRoomCode).length !== 6}
             className="btn w-full"
           >
             Start Spectating

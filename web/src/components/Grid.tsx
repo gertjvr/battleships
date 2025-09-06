@@ -15,13 +15,13 @@ function shipAt(fleet: Ship[] | undefined, c: Coord): Ship | undefined {
   return fleet.find((s) => s.coords.some((x) => keyOf(x) === k));
 }
 
-function getShipEmoji(size: number): string {
+function getShipColor(size: number): string {
   switch (size) {
-    case 2: return '🚤'; // Destroyer - speedboat
-    case 3: return '🛥️'; // Cruiser - motor boat  
-    case 4: return '⛵'; // Battleship - sailboat
-    case 5: return '🚢'; // Carrier - ship
-    default: return '🛶'; // Submarine - canoe
+    case 2: return 'bg-teal-400'; // Destroyer - teal
+    case 3: return 'bg-amber-400'; // Cruiser - amber
+    case 4: return 'bg-orange-400'; // Battleship - orange
+    case 5: return 'bg-purple-400'; // Carrier - purple
+    default: return 'bg-pink-400'; // Submarine - pink
   }
 }
 
@@ -42,9 +42,10 @@ type Props = {
   sunkKeys?: Set<string>;
   lastSunkKeys?: Set<string>;
   sinkingKeys?: Set<string>;
+  hoverCoord?: Coord | null; // for spyglass preview in fire mode
 };
 
-export default function Grid({ mode, fleet, opponentFleet, shots, showShips = false, disabled = false, onCell, previewCoords, previewValid, onHover, highlightKey, sunkKeys, lastSunkKeys, sinkingKeys }: Props) {
+export default function Grid({ mode, fleet, opponentFleet, shots, showShips = false, disabled = false, onCell, previewCoords, previewValid, onHover, highlightKey, sunkKeys, lastSunkKeys, sinkingKeys, hoverCoord }: Props) {
   const headerRow = [<th key="corner" />].concat(letters.map((L) => <th key={L} className="px-1 text-center text-sm text-slate-600">{L}</th>));
 
   const rows = [] as React.ReactNode[];
@@ -60,22 +61,9 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
       if (mode === 'display') {
         const shipHere = hasCoord(fleet, coord);
         if (shipHere && showShips) {
-          cls += ' bg-gradient-to-br from-blue-200 to-blue-300 grid-cell-ship ship-outline text-2xl';
           const s = shipAt(fleet, coord);
           if (s && fleet) {
-            // Show emoji only on the first cell of each ship (top-left position)
-            const isFirstCell = s.coords.reduce((first, current) => {
-              const currentKey = keyOf(current);
-              const firstKey = keyOf(first);
-              // Compare row first, then column to find top-left cell
-              if (current.r < first.r || (current.r === first.r && current.c < first.c)) {
-                return current;
-              }
-              return first;
-            });
-            if (keyOf(coord) === keyOf(isFirstCell)) {
-              content = getShipEmoji(s.size);
-            }
+            cls += ` ${getShipColor(s.size)} grid-cell-ship ship-outline`;
             
             // Determine outer edges for inner outline
             const up: Coord = { r: r - 1, c };
@@ -94,12 +82,12 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
         }
         if (shots?.has(k)) {
           if (shipHere) {
-            cls += ' bg-gradient-to-br from-orange-400 to-red-500 text-white animate-hit text-2xl';
-            content = '💰'; // Treasure chest for hits
+            cls += ' !bg-gradient-to-br !from-orange-400 !to-red-500 text-white animate-hit text-2xl';
+            content = <span style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(255,255,255,0.3)' }}>💥</span>; // Explosion for hits
           } else {
             // Opponent guessed here but it's a miss
-            cls += ' bg-gradient-to-br from-blue-300 to-cyan-400 animate-miss text-2xl';
-            content = '🌊'; // Ocean wave for misses
+            cls += ' !bg-gradient-to-br !from-blue-300 !to-cyan-400 animate-miss text-2xl';
+            content = <span style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5), -1px -1px 2px rgba(255,255,255,0.8)' }}>🌊</span>; // Ocean wave for misses
           }
         }
         if (highlightKey && shots?.has(k) && highlightKey === k) {
@@ -113,7 +101,7 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
           const hit = hasCoord(opponentFleet, coord);
           if (hit) {
             cls += ' bg-gradient-to-br from-orange-400 to-red-500 text-white animate-hit text-2xl';
-            content = '💰'; // Treasure chest for hits
+            content = <span style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(255,255,255,0.3)' }}>💥</span>; // Explosion for hits
             // Only outline once the ship is sunk (including during sinking animation)
             const isSunkCell = !!(sunkKeys?.has(k) || lastSunkKeys?.has(k) || sinkingKeys?.has(k));
             if (isSunkCell) {
@@ -139,7 +127,7 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
             }
           } else {
             cls += ' bg-gradient-to-br from-blue-300 to-cyan-400 animate-miss text-2xl';
-            content = '🌊'; // Ocean wave for misses
+            content = <span style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5), -1px -1px 2px rgba(255,255,255,0.8)' }}>🌊</span>; // Ocean wave for misses
           }
         }
         if (highlightKey && shots?.has(k) && highlightKey === k) {
@@ -148,22 +136,18 @@ export default function Grid({ mode, fleet, opponentFleet, shots, showShips = fa
         if (sunkKeys?.has(k)) cls += ' grid-cell-sunk';
         if (lastSunkKeys?.has(k)) cls += ' grid-cell-last-sunk';
         if (sinkingKeys?.has(k)) cls += ' animate-jiggle';
+        
+        // Show magnifying glass when hovering over empty cells that haven't been shot
+        if (hoverCoord && !shots?.has(k) && keyOf(coord) === keyOf(hoverCoord)) {
+          content = <span style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>🔍</span>; // Magnifying glass
+          cls += ' bg-amber-200 animate-pulse';
+        }
       } else if (mode === 'place') {
         const shipHere = hasCoord(fleet, coord);
         if (shipHere) {
-          cls += ' bg-gradient-to-br from-blue-200 to-blue-300 grid-cell-ship ship-outline text-2xl';
           const s = shipAt(fleet, coord);
           if (s && fleet) {
-            // Show emoji only on the first cell of each ship (top-left position)
-            const isFirstCell = s.coords.reduce((first, current) => {
-              if (current.r < first.r || (current.r === first.r && current.c < first.c)) {
-                return current;
-              }
-              return first;
-            });
-            if (keyOf(coord) === keyOf(isFirstCell)) {
-              content = getShipEmoji(s.size);
-            }
+            cls += ` ${getShipColor(s.size)} grid-cell-ship ship-outline`;
             
             const up: Coord = { r: r - 1, c };
             const right: Coord = { r, c: c + 1 };

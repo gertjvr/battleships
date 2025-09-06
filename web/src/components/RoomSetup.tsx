@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
+import {
+  generateRoomCode,
+  formatRoomCode,
+  normalizeRoomCode
+} from '../utils/roomCode';
 
 interface RoomSetupProps {
   onCreateRoom: (roomCode: string) => void;
   onJoinRoom: (roomCode: string) => void;
+  onSpectate: (roomCode: string) => void;
 }
 
-export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) {
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: RoomSetupProps) {
+  const [mode, setMode] = useState<'create' | 'join' | 'spectate'>('create');
   const [roomCode, setRoomCode] = useState('');
-
-  const generateRoomCode = () => {
-    return Math.random().toString(36).slice(2, 8).toUpperCase();
-  };
 
   const handleCreate = () => {
     const code = generateRoomCode();
@@ -20,8 +22,17 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomCode.trim() && /^[A-Z0-9]{6,8}$/i.test(roomCode.trim())) {
-      onJoinRoom(roomCode.trim().toUpperCase());
+    const code = normalizeRoomCode(roomCode);
+    if (code.length === 6) {
+      onJoinRoom(code);
+    }
+  };
+
+  const handleSpectate = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = normalizeRoomCode(roomCode);
+    if (code.length === 6) {
+      onSpectate(code);
     }
   };
 
@@ -41,6 +52,12 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
         >
           Join Room
         </button>
+        <button 
+          className={mode === 'spectate' ? 'active' : ''}
+          onClick={() => setMode('spectate')}
+        >
+          Spectate
+        </button>
       </div>
 
       {mode === 'create' ? (
@@ -50,21 +67,53 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom }: RoomSetupProps) 
             Create Room
           </button>
         </div>
-      ) : (
+      ) : mode === 'join' ? (
         <div className="join-room">
           <p>Enter the room code shared by another player</p>
           <form onSubmit={handleJoin}>
             <input
               type="text"
               value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const norm = normalizeRoomCode(e.target.value);
+                setRoomCode(formatRoomCode(norm));
+              }}
               placeholder="Enter room code"
-              maxLength={8}
-              pattern="[A-Z0-9]{6,8}"
+              maxLength={7}
+              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
               className="room-input"
             />
-            <button type="submit" disabled={!roomCode.trim() || !/^[A-Z0-9]{6,8}$/i.test(roomCode.trim())} className="join-button">
+            <button
+              type="submit"
+              disabled={normalizeRoomCode(roomCode).length !== 6}
+              className="btn"
+            >
               Join Room
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="spectate-room">
+          <p>Watch an ongoing game by entering the room code</p>
+          <form onSubmit={handleSpectate}>
+            <input
+              type="text"
+              value={roomCode}
+              onChange={(e) => {
+                const norm = normalizeRoomCode(e.target.value);
+                setRoomCode(formatRoomCode(norm));
+              }}
+              placeholder="Enter room code"
+              maxLength={7}
+              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
+              className="room-input"
+            />
+            <button
+              type="submit"
+              disabled={normalizeRoomCode(roomCode).length !== 6}
+              className="btn"
+            >
+              Spectate Game
             </button>
           </form>
         </div>

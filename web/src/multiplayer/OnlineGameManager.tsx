@@ -10,6 +10,7 @@ import HelpPopover from '../components/HelpPopover';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
 import { enableAudio, isAudioEnabled, playWin } from '../sound';
+import { normalizeRoomCode } from '../utils/roomCode';
 
 type Phase = 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 
@@ -30,13 +31,15 @@ interface GameState {
 interface OnlineGameManagerProps {
   onBack: () => void;
   initialPlayerName: string;
+  initialRoomCode?: string | null;
+  initialPlayerHint?: 1 | 2 | null;
 }
 
-export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineGameManagerProps) {
-  const [roomCode, setRoomCode] = useState<string | null>(null);
+export default function OnlineGameManager({ onBack, initialPlayerName, initialRoomCode = null, initialPlayerHint = null }: OnlineGameManagerProps) {
+  const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode ? normalizeRoomCode(initialRoomCode) : null);
   const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(null);
+  const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(initialPlayerHint);
   const [showConfetti, setShowConfetti] = useState(false);
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
@@ -107,6 +110,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
         if (lastMessage.payload?.code === 'ROOM_FULL') {
           alert('Room is full. Please try a different room.');
           setRoomCode(null);
+          window.location.hash = '/online';
         }
         break;
     }
@@ -126,13 +130,42 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
 
   // Handle room creation/joining
   const handleCreateRoom = useCallback((code: string) => {
-    setRoomCode(code);
+    const normalized = normalizeRoomCode(code);
+    setRoomCode(normalized);
+    const params = new URLSearchParams();
+    params.set('room', normalized);
+    params.set('role', 'player');
+    window.location.hash = `/online?${params.toString()}`;
   }, []);
 
   const handleJoinRoom = useCallback((code: string) => {
-    setRoomCode(code);
+    const normalized = normalizeRoomCode(code);
+    setRoomCode(normalized);
+    const params = new URLSearchParams();
+    params.set('room', normalized);
+    params.set('role', 'player');
+    window.location.hash = `/online?${params.toString()}`;
   }, []);
 
+  const handleSpectate = useCallback((code: string) => {
+    const normalized = normalizeRoomCode(code);
+    const params = new URLSearchParams();
+    params.set('room', normalized);
+    params.set('role', 'spectator');
+    window.location.hash = `/online?${params.toString()}`;
+  }, []);
+
+  useEffect(() => {
+    if (!roomCode) return;
+    const params = new URLSearchParams();
+    params.set('room', roomCode);
+    params.set('role', 'player');
+    if (myPlayer) params.set('as', String(myPlayer));
+    const nextHash = `/online?${params.toString()}`;
+    if (window.location.hash.slice(1) !== nextHash) {
+      window.location.hash = nextHash;
+    }
+  }, [roomCode, myPlayer]);
 
   // Game action handlers
   const handlePlace = useCallback((c: Coord) => {
@@ -274,6 +307,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName }: OnlineG
         <RoomSetup 
           onCreateRoom={handleCreateRoom} 
           onJoinRoom={handleJoinRoom}
+          onSpectate={handleSpectate}
         />
       </div>
     );
