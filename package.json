@@ -2,7 +2,7 @@
   "name": "kids-battleships",
   "private": true,
   "version": "0.1.0",
-  "packageManager": "pnpm@9.7.0",
+  "packageManager": "pnpm@11.9.0",
   "workspaces": [
     "web",
     "engine",

@@ -2,4 +2,9 @@ packages:
   - "web"
   - "engine"
   - "worker"
-
+minimumReleaseAge: 0
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+  sharp: true
+  workerd: true
