@@ -3,7 +3,7 @@ import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
-import HelpPopover from '../components/HelpPopover';
+import GameHeader from '../components/GameHeader';
 import {
   FLEET_SIZES,
   type Coord,
@@ -217,25 +217,17 @@ export default function LocalGameManager({ onBack }: Props) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-bold text-center">Kids Battleships - Player vs Player</h2>
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <button className="btn" onClick={() => { clearState(); onBack(); }}>Main Menu</button>
-          <button className="btn" onClick={handleReset}>Restart</button>
-        </div>
-        <div className="flex items-center gap-2">
-          {!audioReady && (
-            <button
-              className="btn"
-              onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
-              title="Enable sounds"
-            >
-              Enable Sound
-            </button>
-          )}
-          <HelpPopover />
-        </div>
-      </header>
+      <GameHeader
+        title="Player vs Player"
+        subtitle="Pass the device between turns."
+        onBack={() => { clearState(); onBack(); }}
+        onReset={handleReset}
+        audioReady={audioReady}
+        onEnableAudio={async () => {
+          const ok = await enableAudio();
+          setAudioReady(ok || isAudioEnabled());
+        }}
+      />
 
       {phase === 'P1_PLACE' && (
         <PlacementView
@@ -304,7 +296,7 @@ export default function LocalGameManager({ onBack }: Props) {
       {phase === 'GAME_OVER' && (
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold">🎉 {(winner && names[winner]) ? names[winner] : `Player ${winner}`} wins!</h2>
-          <div className="text-slate-700">Press Restart to play again.</div>
+          <div className="text-muted-foreground">Press Restart to play again.</div>
         </div>
       )}
 

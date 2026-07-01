@@ -1,6 +1,7 @@
 import React from 'react';
 import Grid from '../components/Grid';
 import ChatHistory, { ChatEntry } from '../components/ChatHistory';
+import { Badge } from '../components/ui/badge';
 import type { Ship } from '@app/engine';
 
 type Props = {
@@ -49,18 +50,18 @@ export default function SpectatorView({
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold">Spectating Game</h1>
         {spectatorCount !== undefined && (
-          <p className="text-sm text-slate-600">
-            👥 {spectatorCount} spectator{spectatorCount !== 1 ? 's' : ''} watching
-          </p>
+          <Badge variant="outline" className="mx-auto">
+            {spectatorCount} spectator{spectatorCount !== 1 ? 's' : ''} watching
+          </Badge>
         )}
         {!isGameOver && !isPlacementPhase && (
-          <div className="bg-blue-100 text-blue-900 rounded-md px-4 py-2">
-            🎯 {currentTurn === 1 ? (p1Name || 'Player 1') : (p2Name || 'Player 2')}'s turn
+          <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-900">
+            {currentTurn === 1 ? (p1Name || 'Player 1') : (p2Name || 'Player 2')}'s turn
           </div>
         )}
         {isPlacementPhase && (
-          <div className="bg-amber-100 text-amber-900 rounded-md px-4 py-2">
-            🚢 Players are placing their ships...
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900">
+            Players are placing their ships...
           </div>
         )}
       </div>
@@ -114,12 +115,7 @@ export default function SpectatorView({
         </div>
       </div>
 
-      {/* Legend and game log */}
       <div className="space-y-4">
-        <div className="text-slate-600 text-sm text-center">
-          Legend: 💥 Hit • 💧 Miss • 🚢 Sunk
-        </div>
-
         {chat && chat.length > 0 && (
           <ChatHistory 
             entries={chat} 

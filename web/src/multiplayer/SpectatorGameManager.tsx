@@ -2,7 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { useWebSocket } from './useWebSocket';
 import SpectatorView from '../views/SpectatorView';
 import ConnectionStatus from '../components/ConnectionStatus';
-import HelpPopover from '../components/HelpPopover';
+import GameHeader from '../components/GameHeader';
+import { Home } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { enableAudio, isAudioEnabled } from '../sound';
 import { formatRoomCode, normalizeRoomCode } from '../utils/roomCode';
 
@@ -88,43 +93,40 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
   // Show room code input if not connected to a room
   if (!roomCode) {
     return (
-      <div className="spectator-game max-w-md mx-auto mt-8">
-        <div className="mb-6">
-          <button 
-            className="btn mb-4"
-            onClick={onBack}
-          >
-            ← Back to Main Menu
-          </button>
-          
-          <h1 className="text-2xl font-bold mb-2">Spectate Game</h1>
-          <p className="text-slate-600 text-sm mb-6">
-            Enter a room code to watch an ongoing game. You'll see both players' moves in real-time.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Room Code</label>
-            <input
-              type="text"
-              value={inputRoomCode}
-              onChange={(e) => setInputRoomCode(formatRoomCode(e.target.value))}
-              placeholder="Enter room code"
-              maxLength={7}
-              pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <button 
-            onClick={handleJoinSpectator}
-            disabled={normalizeRoomCode(inputRoomCode).length !== 6}
-            className="btn w-full"
-          >
-            Start Spectating
-          </button>
-        </div>
+      <div className="mx-auto w-full max-w-md p-4 sm:p-6">
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>Spectate Game</CardTitle>
+            <CardDescription>Enter a room code to watch an ongoing game.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button variant="outline" onClick={onBack} className="w-full justify-start sm:w-auto">
+              <Home />
+              Menu
+            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="spectator-room-code">Room code</Label>
+              <Input
+                id="spectator-room-code"
+                type="text"
+                value={inputRoomCode}
+                onChange={(e) => setInputRoomCode(formatRoomCode(e.target.value))}
+                placeholder="ABC-123"
+                maxLength={7}
+                pattern="[A-Z0-9]{3}-[A-Z0-9]{3}"
+                autoComplete="off"
+                className="h-11 font-mono text-base uppercase tracking-widest"
+              />
+            </div>
+            <Button
+              onClick={handleJoinSpectator}
+              disabled={normalizeRoomCode(inputRoomCode).length !== 6}
+              className="w-full"
+            >
+              Start Spectating
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -132,69 +134,56 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
   // Show loading/connecting state
   if (!gameState || connectionState.status !== 'connected') {
     return (
-      <div className="spectator-game">
-        <div className="flex items-center justify-between mb-4">
-          <ConnectionStatus 
-            status={connectionState.status}
-            player={null}
-            roomCode={roomCode}
-            error={connectionState.error}
-            playerNames={gameState?.names}
-            isSpectator={true}
-            spectatorCount={spectatorCount}
-          />
-          <div className="flex gap-2">
-            <button 
-              className="btn" 
-              onClick={onBack}
-              title="Return to main menu"
-            >
-              Back to Main Menu
-            </button>
-          </div>
-        </div>
+      <div className="mx-auto w-full max-w-5xl space-y-4 p-4 sm:p-6">
+        <GameHeader
+          title="Spectating Game"
+          subtitle={`Room ${formatRoomCode(roomCode)}`}
+          onBack={onBack}
+        />
+        <ConnectionStatus
+          status={connectionState.status}
+          player={null}
+          roomCode={roomCode}
+          error={connectionState.error}
+          playerNames={gameState?.names}
+          isSpectator={true}
+          spectatorCount={spectatorCount}
+        />
         
         {connectionState.status === 'connected' && (
-          <div className="text-center py-8">
-            <p className="text-lg">Loading game...</p>
-            <p className="text-sm text-slate-600 mt-2">Room: {roomCode}</p>
-          </div>
+          <Card className="rounded-lg">
+            <CardContent className="p-6 text-center">
+              <p className="text-base font-medium">Loading game</p>
+              <p className="mt-2 text-sm text-muted-foreground">Room {formatRoomCode(roomCode)}</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     );
   }
 
   return (
-    <div className="spectator-game">
-      {/* Header controls */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <button 
-            className="btn" 
-            onClick={onBack}
-            title="Return to main menu"
-          >
-            Back to Main Menu
-          </button>
-          <span className="text-sm text-slate-600">Room: {roomCode}</span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {!audioReady && (
-            <button
-              className="btn"
-              onClick={async () => { 
-                const ok = await enableAudio(); 
-                setAudioReady(ok || isAudioEnabled()); 
-              }}
-              title="Enable sounds"
-            >
-              Enable Sound
-            </button>
-          )}
-          <HelpPopover />
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-6">
+      <GameHeader
+        title="Spectating Game"
+        subtitle={`Room ${formatRoomCode(roomCode)}`}
+        onBack={onBack}
+        audioReady={audioReady}
+        onEnableAudio={async () => {
+          const ok = await enableAudio();
+          setAudioReady(ok || isAudioEnabled());
+        }}
+      />
+
+      <ConnectionStatus
+        status={connectionState.status}
+        player={null}
+        roomCode={roomCode}
+        error={connectionState.error}
+        playerNames={gameState?.names}
+        isSpectator={true}
+        spectatorCount={spectatorCount}
+      />
 
       {/* Spectator view */}
       <SpectatorView
@@ -229,19 +218,6 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
           };
         })}
       />
-      
-      {/* Footer connection status */}
-      <div className="fixed bottom-4 left-4">
-        <ConnectionStatus 
-          status={connectionState.status}
-          player={null}
-          roomCode={roomCode}
-          error={connectionState.error}
-          playerNames={gameState?.names}
-          isSpectator={true}
-          spectatorCount={spectatorCount}
-        />
-      </div>
     </div>
   );
 }

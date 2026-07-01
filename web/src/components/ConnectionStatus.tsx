@@ -1,49 +1,55 @@
 import React from 'react';
+import { Circle } from 'lucide-react';
 import { formatRoomCode } from '../utils/roomCode';
+import { cn } from '../lib/utils';
+import { Badge } from './ui/badge';
 
 interface ConnectionStatusProps {
   status: 'disconnected' | 'connecting' | 'connected';
   player: 1 | 2 | null;
-  roomCode: string;
+  roomCode?: string;
   error: string | null;
   p1Ready?: boolean;
   p2Ready?: boolean;
   playerNames?: { [key: number]: string };
   isSpectator?: boolean;
   spectatorCount?: number;
+  className?: string;
 }
 
-export default function ConnectionStatus({ status, player, roomCode, error, p1Ready, p2Ready, playerNames, isSpectator, spectatorCount }: ConnectionStatusProps) {
-  const getStatusText = () => {
-    switch (status) {
-      case 'connecting':
-        return 'Connecting...';
-      case 'connected':
-        if (isSpectator) {
-          return `Connected as Spectator ${spectatorCount || ''}`;
-        }
-        return `Connected as Player ${player}`;
-      case 'disconnected':
-        return error || 'Disconnected';
-    }
-  };
+export default function ConnectionStatus({
+  status,
+  player,
+  roomCode,
+  error,
+  isSpectator,
+  spectatorCount,
+  className,
+}: ConnectionStatusProps) {
+  const statusText = (() => {
+    if (status === 'connecting') return 'Connecting';
+    if (status === 'disconnected') return error || 'Disconnected';
+    if (isSpectator) return spectatorCount ? `Spectating (${spectatorCount})` : 'Spectating';
+    return player ? `Player ${player} connected` : 'Connected';
+  })();
 
-  const getStatusClass = () => {
-    switch (status) {
-      case 'connecting':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'connected':
-        return 'text-green-600 bg-green-100';
-      case 'disconnected':
-        return 'text-red-600 bg-red-100';
-    }
-  };
+  const tone = (() => {
+    if (status === 'connected') return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+    if (status === 'connecting') return 'border-amber-200 bg-amber-50 text-amber-800';
+    return 'border-red-200 bg-red-50 text-red-800';
+  })();
 
   return (
-    <div className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-2 ${getStatusClass()}`}>
-      <div className="w-2 h-2 rounded-full bg-current"></div>
-      <div className="status-text">{getStatusText()}</div>
-      <div className="text-gray-500">({formatRoomCode(roomCode)})</div>
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      <Badge variant="outline" className={cn('gap-2 px-3 py-1', tone)}>
+        <Circle className="size-2 fill-current" />
+        {statusText}
+      </Badge>
+      {roomCode && (
+        <span className="font-mono text-xs font-semibold tracking-wide text-muted-foreground">
+          {formatRoomCode(roomCode)}
+        </span>
+      )}
     </div>
   );
 }

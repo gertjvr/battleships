@@ -16,6 +16,7 @@ export default defineConfig(({ command }) => {
       alias: {
         // Use source during dev for fast iteration; dist for production builds
         '@app/engine': command === 'build' ? engineDist : engineSrc,
+        '@': path.resolve(root, 'src'),
       },
     },
     server: {

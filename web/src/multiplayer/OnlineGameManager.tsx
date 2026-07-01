@@ -6,8 +6,10 @@ import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
-import HelpPopover from '../components/HelpPopover';
 import SpectatorGameManager from './SpectatorGameManager';
+import GameHeader from '../components/GameHeader';
+import RoomCodePanel from '../components/RoomCodePanel';
+import { Card, CardContent } from '../components/ui/card';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
 import { enableAudio, isAudioEnabled, playWin } from '../sound';
@@ -365,7 +367,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   // Show room setup if not connected to a room
   if (!roomCode) {
     return (
-      <div className="online-game">
+      <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
         <RoomSetup 
           onCreateRoom={handleCreateRoom} 
           onJoinRoom={handleJoinRoom}
@@ -376,15 +378,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   }
 
   const roomCodePanel = (
-    <div className="room-code-panel">
-      <div>
-        <div className="room-code-label">Room code</div>
-        <div className="room-code-value">{formatRoomCode(roomCode)}</div>
-      </div>
-      <button className="btn room-code-copy" onClick={handleCopyRoomCode}>
-        {copiedRoomCode ? 'Copied' : 'Copy'}
-      </button>
-    </div>
+    <RoomCodePanel roomCode={roomCode} copied={copiedRoomCode} onCopy={handleCopyRoomCode} />
   );
 
   console.log('🔧 OnlineGameManager render - gameState:', gameState, 'myPlayer:', myPlayer, 'connectionStatus:', connectionState.status);
@@ -392,44 +386,30 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   // Show loading/connecting state
   if (!gameState || connectionState.status !== 'connected') {
     return (
-      <div className="online-game">
+      <div className="mx-auto w-full max-w-5xl space-y-4 p-4 sm:p-6">
+        <GameHeader
+          title="Online Multiplayer"
+          subtitle="Connect to your room, then place your ships."
+          onBack={onBack}
+        />
         {roomCodePanel}
-        <div className="flex items-center justify-between mb-4">
-          <ConnectionStatus 
-            status={connectionState.status}
-            player={myPlayer}
-            roomCode={roomCode}
-            error={connectionState.error}
-            p1Ready={gameState?.p1Ready}
-            p2Ready={gameState?.p2Ready}
-            playerNames={gameState?.names}
-          />
-          <div className="flex gap-2">
-            {connectionState.status === 'disconnected' && (
-              <button 
-                className="btn" 
-                onClick={onBack}
-                title="Return to offline mode"
-              >
-                Back to Offline
-              </button>
-            )}
-            {connectionState.status === 'connected' && (
-              <button 
-                className="btn" 
-                onClick={handleReset}
-                title="Restart the game"
-              >
-                Restart
-              </button>
-            )}
-          </div>
-        </div>
+        <ConnectionStatus
+          status={connectionState.status}
+          player={myPlayer}
+          error={connectionState.error}
+          p1Ready={gameState?.p1Ready}
+          p2Ready={gameState?.p2Ready}
+          playerNames={gameState?.names}
+        />
         {connectionState.status === 'connected' && myPlayer === 1 && (
-          <div className="waiting">
-            <p>Waiting for another player to join...</p>
-            <p>Share room code: <strong>{roomCode}</strong></p>
-          </div>
+          <Card className="rounded-lg border-sky-200">
+            <CardContent className="space-y-2 p-6 text-center">
+              <p className="text-base font-medium">Waiting for another player to join</p>
+              <p className="text-sm text-muted-foreground">
+                Share room code <span className="font-mono font-semibold text-foreground">{formatRoomCode(roomCode)}</span>.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     );
@@ -449,29 +429,28 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
 
 
   return (
-    <div className="online-game">
-      {/* Connection controls */}
-      <div className="flex items-center justify-end gap-2 mb-6">
-        {!audioReady && (
-          <button
-            className="btn"
-            onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
-            title="Enable sounds"
-          >
-            Enable Sound
-          </button>
-        )}
-        <HelpPopover />
-        <button 
-          className="btn" 
-          onClick={onBack}
-          title="Return to offline mode"
-        >
-          Back to Offline
-        </button>
-      </div>
+    <div className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-6">
+      <GameHeader
+        title="Online Multiplayer"
+        subtitle={myPlayer ? `You are Player ${myPlayer}` : undefined}
+        onBack={onBack}
+        audioReady={audioReady}
+        onEnableAudio={async () => {
+          const ok = await enableAudio();
+          setAudioReady(ok || isAudioEnabled());
+        }}
+      />
 
       {roomCodePanel}
+
+      <ConnectionStatus
+        status={connectionState.status}
+        player={myPlayer}
+        error={connectionState.error}
+        p1Ready={gameState?.p1Ready}
+        p2Ready={gameState?.p2Ready}
+        playerNames={gameState?.names}
+      />
 
       {gameState.phase === 'GAME_OVER' && gameState.winner ? (
         /* Game Over Screen */
@@ -489,21 +468,21 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
               </p>
             </div>
           )}
-          <div className="text-slate-600">
-            Use "Back to Offline" to return to the main menu and play again.
+          <div className="text-muted-foreground">
+            Use Menu to return to the main menu and play again.
           </div>
         </div>
       ) : isPlacementPhase ? (
         <div>
           {/* Ready Status Messages */}
           {amIReady && (
-            <div className="bg-green-100 text-green-900 rounded-md px-4 py-3 mb-4">
-              ✅ You are ready! {isOpponentReady ? 'Starting battle...' : 'Waiting for opponent to finish placing ships...'}
+            <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
+              You are ready. {isOpponentReady ? 'Starting battle...' : 'Waiting for opponent to finish placing ships...'}
             </div>
           )}
           {!amIReady && isOpponentReady && (
-            <div className="bg-blue-100 text-blue-900 rounded-md px-4 py-3 mb-4">
-              🎯 {gameState.names[myPlayer === 1 ? 2 : 1] || `Player ${myPlayer === 1 ? 2 : 1}`} is ready! Finish placing your ships to start the battle.
+            <div className="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-medium text-sky-900">
+              {gameState.names[myPlayer === 1 ? 2 : 1] || `Player ${myPlayer === 1 ? 2 : 1}`} is ready. Finish placing your ships to start the battle.
             </div>
           )}
           
@@ -576,19 +555,6 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
       )}
 
       {showConfetti && <Confetti />}
-      
-      {/* Footer connection status */}
-      <div className="fixed bottom-4 left-4">
-        <ConnectionStatus 
-          status={connectionState.status}
-          player={myPlayer}
-          roomCode={roomCode || ''}
-          error={connectionState.error}
-          p1Ready={gameState?.p1Ready}
-          p2Ready={gameState?.p2Ready}
-          playerNames={gameState?.names}
-        />
-      </div>
     </div>
   );
 }

@@ -1,5 +1,10 @@
 import React from 'react';
+import { Check, RotateCw, Undo2 } from 'lucide-react';
 import Grid from '../components/Grid';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import type { Coord, Orientation, Ship, ShipSize } from '@app/engine';
 
 type Props = {
@@ -18,30 +23,71 @@ type Props = {
   previewValid?: boolean;
 };
 
-export default function PlacementView({ playerIndex, playerName, onNameChange, fleet, nextSize, orientation, onRotate, onPlace, onHover, onUndo, onDone, previewCoords, previewValid }: Props) {
+export default function PlacementView({
+  playerIndex,
+  playerName,
+  onNameChange,
+  fleet,
+  nextSize,
+  orientation,
+  onRotate,
+  onPlace,
+  onHover,
+  onUndo,
+  onDone,
+  previewCoords,
+  previewValid,
+}: Props) {
   const allPlaced = !nextSize;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{playerName ? `${playerName}` : `Player ${playerIndex}`}: Place Your Ships</h1>
-      <div className="flex items-center gap-3">
-        <input
-          className="border border-slate-300 rounded px-3 py-1"
-          placeholder={`Player ${playerIndex}`}
-          value={playerName ?? ''}
-          onChange={(e) => onNameChange?.(e.target.value)}
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            {playerName ? `${playerName}` : `Player ${playerIndex}`}: Place Ships
+          </h2>
+          <Badge variant={allPlaced ? 'default' : 'outline'} className="px-3 py-1">
+            {allPlaced ? 'All ships placed' : `Place length ${nextSize}`}
+          </Badge>
+        </div>
+        <div className="w-full space-y-2 sm:w-64">
+          <Label htmlFor={`player-${playerIndex}-name`}>Player name</Label>
+          <Input
+            id={`player-${playerIndex}-name`}
+            placeholder={`Player ${playerIndex}`}
+            value={playerName ?? ''}
+            onChange={(e) => onNameChange?.(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_auto] gap-2 sm:flex sm:flex-wrap">
+        <Button variant="outline" onClick={onRotate} className="whitespace-nowrap">
+          <RotateCw />
+          {orientation === 'H' ? 'Horizontal' : 'Vertical'}
+        </Button>
+        <Button variant="outline" onClick={onUndo} disabled={fleet.length === 0} className="whitespace-nowrap">
+          <Undo2 />
+          Undo
+        </Button>
+        <Button onClick={onDone} disabled={!allPlaced} className="whitespace-nowrap">
+          <Check />
+          Done
+        </Button>
+      </div>
+
+      <div className="overflow-auto">
+        <Grid
+          mode="place"
+          fleet={fleet}
+          showShips
+          onCell={onPlace}
+          onHover={onHover}
+          previewCoords={previewCoords}
+          previewValid={previewValid}
         />
       </div>
-      <div className="flex items-center gap-3">
-        <button className="btn" onClick={onRotate}>Rotate: {orientation === 'H' ? 'Horizontal' : 'Vertical'}</button>
-        <button className="btn" onClick={onUndo} disabled={fleet.length === 0}>Undo Last</button>
-        <button className="btn" onClick={onDone} disabled={!allPlaced}>Done</button>
-      </div>
-      <div className="text-slate-700">{allPlaced ? 'All ships placed!' : `Place ship of length ${nextSize}`}</div>
-      <div className="text-slate-600 text-sm">Tip: Use Space to rotate, Enter to place, Tab to move.</div>
-      <div className="overflow-auto">
-        <Grid mode="place" fleet={fleet} showShips onCell={onPlace} onHover={onHover} previewCoords={previewCoords} previewValid={previewValid} />
-      </div>
-    </div>
+    </section>
   );
 }

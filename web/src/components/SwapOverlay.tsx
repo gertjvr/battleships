@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from './ui/button';
 
 type Props = {
   shown: boolean;
@@ -12,9 +13,8 @@ export default function SwapOverlay({ shown, message, onReady }: Props) {
     <div className="overlay">
       <div className="max-w-md text-center space-y-6">
         <h1 className="text-3xl font-bold">{message}</h1>
-        <button className="btn" onClick={onReady} autoFocus>Ready</button>
+        <Button onClick={onReady} autoFocus size="lg">Ready</Button>
       </div>
     </div>
   );
 }
-

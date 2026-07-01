@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import Confetti from '../components/Confetti';
-import HelpPopover from '../components/HelpPopover';
+import GameHeader from '../components/GameHeader';
 import {
   FLEET_SIZES,
   type Coord,
@@ -232,27 +232,17 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-bold text-center">
-        Kids Battleships - Player vs Computer ({difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : 'Hard'})
-      </h2>
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <button className="btn" onClick={handleBackClick}>Main Menu</button>
-          <button className="btn" onClick={handleReset}>Restart</button>
-        </div>
-        <div className="flex items-center gap-2">
-          {!audioReady && (
-            <button
-              className="btn"
-              onClick={async () => { const ok = await enableAudio(); setAudioReady(ok || isAudioEnabled()); }}
-              title="Enable sounds"
-            >
-              Enable Sound
-            </button>
-          )}
-          <HelpPopover />
-        </div>
-      </header>
+      <GameHeader
+        title="Player vs Computer"
+        subtitle={`Difficulty: ${difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : 'Hard'}`}
+        onBack={handleBackClick}
+        onReset={handleReset}
+        audioReady={audioReady}
+        onEnableAudio={async () => {
+          const ok = await enableAudio();
+          setAudioReady(ok || isAudioEnabled());
+        }}
+      />
 
       {phase === 'P1_PLACE' && (
         <PlacementView
@@ -290,7 +280,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
       {phase === 'GAME_OVER' && (
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold">🎉 {(winner && names[winner]) ? names[winner] : winner === 1 ? 'You' : 'Computer'} wins!</h2>
-          <div className="text-slate-700">Press Restart to play again.</div>
+          <div className="text-muted-foreground">Press Restart to play again.</div>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import Grid from '../components/Grid';
 import ChatHistory, { ChatEntry } from '../components/ChatHistory';
+import { Button } from '../components/ui/button';
 import type { Ship } from '@app/engine';
 
 type Props = {
@@ -36,7 +37,7 @@ export default function PlayView({ currentPlayer, currentPlayerName, meLabel, th
       {(() => {
         const has = !!banner;
         const thinking = has && /computer is thinking/i.test(banner!);
-        const cls = `rounded-md px-4 py-3 ${thinking ? 'bg-amber-100 text-amber-900 animate-pulse' : 'bg-emerald-100 text-emerald-800'}`;
+        const cls = `rounded-md border px-4 py-3 text-sm font-medium ${thinking ? 'border-amber-200 bg-amber-50 text-amber-900 animate-pulse' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`;
         return (
           <div className={has ? cls : cls + ' invisible'}>
             {banner || ' '}
@@ -79,16 +80,14 @@ export default function PlayView({ currentPlayer, currentPlayerName, meLabel, th
           </div>
         </div>
       </div>
-      <div className="text-slate-700 text-sm">Tap a cell on Your Guesses to fire.</div>
-      <div className="text-slate-600 text-sm">Legend: 💥 Hit • 💧 Miss • 🚢 Sunk</div>
       {ctaLabel && (
         <div className="space-y-2">
           {ctaMessage && (
-            <div className="rounded-md bg-amber-100 text-amber-900 px-4 py-3">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {ctaMessage}
             </div>
           )}
-          <button className="btn" onClick={onCta} disabled={!onCta}>{ctaLabel}</button>
+          <Button onClick={onCta} disabled={!onCta}>{ctaLabel}</Button>
         </div>
       )}
       {chat && chat.length > 0 && (
