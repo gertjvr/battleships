@@ -7,6 +7,7 @@ import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
 import HelpPopover from '../components/HelpPopover';
+import SpectatorGameManager from './SpectatorGameManager';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
 import { enableAudio, isAudioEnabled, playWin } from '../sound';
@@ -32,10 +33,15 @@ interface OnlineGameManagerProps {
   onBack: () => void;
   initialPlayerName: string;
   initialRoomCode?: string | null;
+  initialRole?: 'player' | 'spectator' | null;
   initialPlayerHint?: 1 | 2 | null;
 }
 
-export default function OnlineGameManager({ onBack, initialPlayerName, initialRoomCode = null, initialPlayerHint = null }: OnlineGameManagerProps) {
+export default function OnlineGameManager({ onBack, initialPlayerName, initialRoomCode = null, initialRole = 'player', initialPlayerHint = null }: OnlineGameManagerProps) {
+  if (initialRole === 'spectator') {
+    return <SpectatorGameManager onBack={onBack} initialRoomCode={initialRoomCode} />;
+  }
+
   const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode ? normalizeRoomCode(initialRoomCode) : null);
   const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -44,7 +50,6 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
-  const [hoverCoord, setHoverCoord] = useState<Coord | null>(null);
 
   const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false);
 
@@ -478,7 +483,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
               text = entry.text;
             } else if (entry.target) {
               const coord = `${String.fromCharCode(65 + entry.target.c)}${entry.target.r + 1}`;
-              const result = entry.hit ? 'Hit 💥' : 'Miss 🌊';
+              const result = entry.hit ? 'Hit 💥' : 'Miss 💧';
               const sunk = entry.sunk ? ' (Sunk ship!)' : '';
               text = `${coord} - ${result}${sunk}`;
             } else {
@@ -491,15 +496,14 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
               key: `${entry.type}-${index}`
             };
           })}
-          hoverCoord={hoverCoord}
-          onHover={setHoverCoord}
         />
       )}
 
       {overlay.shown && (
         <SwapOverlay
+          shown={overlay.shown}
           message={overlay.message}
-          onClose={handleOverlayClose}
+          onReady={handleOverlayClose}
         />
       )}
 

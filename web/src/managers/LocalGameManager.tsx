@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
 import HelpPopover from '../components/HelpPopover';
-import { type ChatEntry } from '../components/ChatHistory';
 import {
   FLEET_SIZES,
   type Coord,
@@ -51,8 +50,6 @@ export default function LocalGameManager({ onBack }: Props) {
   const [lastShotP2, setLastShotP2] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [names, setNames] = useState<{ 1?: string; 2?: string }>({});
-  const [log, setLog] = useState<ChatEntry[]>([]);
-  const [hoverCoord, setHoverCoord] = useState<Coord | null>(null);
 
   // Load persisted PVP state on mount
   useEffect(() => {
@@ -70,7 +67,6 @@ export default function LocalGameManager({ onBack }: Props) {
       setNames(persisted.names ?? {});
       setLastShotP1(persisted.lastShotP1 ?? null);
       setLastShotP2(persisted.lastShotP2 ?? null);
-      setLog(persisted.log ?? []);
       setShowConfetti(persisted.phase === 'GAME_OVER' && !!persisted.winner);
     } catch {
       // ignore malformed persisted state
@@ -89,7 +85,7 @@ export default function LocalGameManager({ onBack }: Props) {
       overlay,
       winner,
       names,
-      log,
+      log: [],
       lastShotP1,
       lastShotP2,
       sunkOnP1: null,
@@ -104,7 +100,7 @@ export default function LocalGameManager({ onBack }: Props) {
       ai: undefined,
     };
     saveState(state);
-  }, [phase, p1, p2, p1PlaceIndex, p2PlaceIndex, orientation, overlay, winner, names, lastShotP1, lastShotP2, log]);
+  }, [phase, p1, p2, p1PlaceIndex, p2PlaceIndex, orientation, overlay, winner, names, lastShotP1, lastShotP2]);
 
   const nextSize = useMemo<ShipSize | undefined>(() => {
     const i = phase === 'P1_PLACE' ? p1PlaceIndex : p2PlaceIndex;
@@ -119,15 +115,21 @@ export default function LocalGameManager({ onBack }: Props) {
       setP1((prev) => ({ ...prev, fleet: placeShip(prev.fleet, c, size, orientation) }));
       const nextIdx = p1PlaceIndex + 1;
       setP1PlaceIndex(nextIdx);
+      if (nextIdx >= FLEET_SIZES.length) {
+        setOverlay({ shown: true, message: `Pass the device to ${names[2] ?? 'Player 2'}`, next: 'P2_PLACE' });
+      }
     } else if (phase === 'P2_PLACE') {
       if (!canPlace(p2.fleet, c, size, orientation)) return;
       setP2((prev) => ({ ...prev, fleet: placeShip(prev.fleet, c, size, orientation) }));
       const nextIdx = p2PlaceIndex + 1;
       setP2PlaceIndex(nextIdx);
+      if (nextIdx >= FLEET_SIZES.length) {
+        setOverlay({ shown: true, message: `${names[1] ?? 'Player 1'} starts!`, next: 'P1_TURN' });
+      }
     }
   }
 
-  const handleHover = useCallback((c: Coord | null) => {
+  function handleHover(c: Coord | null) {
     const size = nextSize;
     if (!size || !c) {
       setPreview(null);
@@ -138,7 +140,7 @@ export default function LocalGameManager({ onBack }: Props) {
       ? canPlace(p1.fleet, c, size, orientation)
       : canPlace(p2.fleet, c, size, orientation);
     setPreview({ coords, valid });
-  }, [nextSize, orientation, phase, p1.fleet, p2.fleet]);
+  }
 
   function handleUndo() {
     if (phase === 'P1_PLACE' && p1.fleet.length > 0) {
@@ -170,29 +172,11 @@ export default function LocalGameManager({ onBack }: Props) {
       setP2((prev) => ({ ...prev, fleet: res.defenderFleet }));
       if (res.result.hit) playHit(); else playMiss();
       if (res.result.sunk) playSunk();
-      
-      // Add to history log
-      const letters = ['A','B','C','D','E','F','G','H','I','J'];
-      const coord = `${letters[c]}${r + 1}`;
-      const playerName = names[1] ?? 'Player 1';
-      let logText = `${playerName} fired at ${coord} - `;
-      if (res.result.hit) {
-        if (res.result.sunk) {
-          logText += `Hit and sunk a ship! 💥🚢`;
-        } else {
-          logText += `Hit! 💥`;
-        }
-      } else {
-        logText += `Miss 🌊`;
-      }
-      setLog(prev => [...prev, { who: 'me' as const, text: logText }]);
-      
       if (res.result.win) {
         setWinner(1);
         setPhase('GAME_OVER');
         setShowConfetti(true);
         playWin();
-        setLog(prev => [...prev, { who: 'system' as const, text: `🎉 ${playerName} wins the game!` }]);
         return;
       }
       setOverlay({ shown: true, message: `Pass the device to ${names[2] ?? 'Player 2'}`, next: 'P2_TURN' });
@@ -205,29 +189,11 @@ export default function LocalGameManager({ onBack }: Props) {
       setP1((prev) => ({ ...prev, fleet: res.defenderFleet }));
       if (res.result.hit) playHit(); else playMiss();
       if (res.result.sunk) playSunk();
-      
-      // Add to history log
-      const letters = ['A','B','C','D','E','F','G','H','I','J'];
-      const coord = `${letters[c]}${r + 1}`;
-      const playerName = names[2] ?? 'Player 2';
-      let logText = `${playerName} fired at ${coord} - `;
-      if (res.result.hit) {
-        if (res.result.sunk) {
-          logText += `Hit and sunk a ship! 💥🚢`;
-        } else {
-          logText += `Hit! 💥`;
-        }
-      } else {
-        logText += `Miss 🌊`;
-      }
-      setLog(prev => [...prev, { who: 'them' as const, text: logText }]);
-      
       if (res.result.win) {
         setWinner(2);
         setPhase('GAME_OVER');
         setShowConfetti(true);
         playWin();
-        setLog(prev => [...prev, { who: 'system' as const, text: `🎉 ${playerName} wins the game!` }]);
         return;
       }
       setOverlay({ shown: true, message: `Pass the device to ${names[1] ?? 'Player 1'}`, next: 'P1_TURN' });
@@ -247,7 +213,6 @@ export default function LocalGameManager({ onBack }: Props) {
     setLastShotP1(null);
     setLastShotP2(null);
     setShowConfetti(false);
-    setLog([]);
   }
 
   return (
@@ -319,11 +284,6 @@ export default function LocalGameManager({ onBack }: Props) {
           opponentShots={p2.shots}
           lastAttackerShot={lastShotP1}
           lastOpponentShot={lastShotP2}
-          chat={log}
-          meLabel={names[1] ?? 'Player 1'}
-          themLabel={names[2] ?? 'Player 2'}
-          hoverCoord={hoverCoord}
-          onHover={setHoverCoord}
         />
       )}
 
@@ -338,11 +298,6 @@ export default function LocalGameManager({ onBack }: Props) {
           opponentShots={p1.shots}
           lastAttackerShot={lastShotP2}
           lastOpponentShot={lastShotP1}
-          chat={log}
-          meLabel={names[2] ?? 'Player 2'}
-          themLabel={names[1] ?? 'Player 1'}
-          hoverCoord={hoverCoord}
-          onHover={setHoverCoord}
         />
       )}
 

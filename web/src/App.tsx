@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import LocalGameManager from './managers/LocalGameManager';
 import ComputerGameManager from './managers/ComputerGameManager';
 import OnlineGameManager from './multiplayer/OnlineGameManager';
-import SpectatorGameManager from './multiplayer/SpectatorGameManager';
 import HomeView from './views/HomeView';
 import type { Difficulty } from './persistence';
 import { normalizeRoomCode } from './utils/roomCode';
@@ -53,19 +52,12 @@ export default function App() {
     const role = (query.get('role') as 'player' | 'spectator' | null) || undefined;
     const asPlayer = query.get('as');
     const initialPlayer = asPlayer === '1' ? 1 : asPlayer === '2' ? 2 : undefined;
-    if (role === 'spectator') {
-      return (
-        <SpectatorGameManager
-          onBack={() => navigate('/')}
-          initialRoomCode={room || null}
-        />
-      );
-    }
     return (
       <OnlineGameManager
         onBack={() => navigate('/')}
         initialPlayerName=""
         initialRoomCode={room || null}
+        initialRole={role}
         initialPlayerHint={initialPlayer}
       />
     );
