@@ -453,25 +453,44 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
       />
 
       {gameState.phase === 'GAME_OVER' && gameState.winner ? (
-        /* Game Over Screen */
-        <div className="text-center space-y-6">
-          {gameState.winner === myPlayer ? (
-            <div>
-              <h2 className="text-4xl font-bold text-green-600 mb-2">🎉 You Win! 🎉</h2>
-              <p className="text-lg text-green-700">Congratulations! You sunk all of your opponent's ships!</p>
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-4xl font-bold text-red-600 mb-2">💀 You Lost 💀</h2>
-              <p className="text-lg text-red-700">
-                {gameState.names[gameState.winner] || `Player ${gameState.winner}`} sunk all your ships!
-              </p>
-            </div>
-          )}
-          <div className="text-muted-foreground">
-            Use Menu to return to the main menu and play again.
-          </div>
-        </div>
+        <PlayView
+          currentPlayer={myPlayer || 1}
+          currentPlayerName={gameState.names[myPlayer || 1]}
+          meLabel={gameState.names[myPlayer || 1]?.charAt(0)?.toUpperCase() || `P${myPlayer || 1}`}
+          themLabel={gameState.names[myPlayer === 1 ? 2 : 1]?.charAt(0)?.toUpperCase() || `P${myPlayer === 1 ? 2 : 1}`}
+          opponentFleet={myPlayer === 1 ? gameState.p2.fleet : gameState.p1.fleet}
+          attackerShots={myPlayer === 1 ? gameState.p1.shots : gameState.p2.shots}
+          onFire={(r, c) => handleFire({ r, c })}
+          ownFleet={myPlayer === 1 ? gameState.p1.fleet : gameState.p2.fleet}
+          opponentShots={myPlayer === 1 ? gameState.p2.shots : gameState.p1.shots}
+          disabled
+          banner={gameState.winner === myPlayer
+            ? 'You win!'
+            : `${gameState.names[gameState.winner] || `Player ${gameState.winner}`} wins!`}
+          ctaLabel="Restart"
+          onCta={handleReset}
+          chat={gameState.log.map((entry, index) => {
+            let text = '';
+            if (entry.message) {
+              text = entry.message;
+            } else if (entry.text) {
+              text = entry.text;
+            } else if (entry.target) {
+              const coord = `${String.fromCharCode(65 + entry.target.c)}${entry.target.r + 1}`;
+              const result = entry.hit ? 'Hit 💥' : 'Miss 💧';
+              const sunk = entry.sunk ? ' (Sunk ship!)' : '';
+              text = `${coord} - ${result}${sunk}`;
+            } else {
+              text = 'Unknown action';
+            }
+
+            return {
+              who: entry.player === myPlayer ? 'me' : entry.player ? 'them' : 'system',
+              text,
+              key: `${entry.type}-${index}`
+            };
+          })}
+        />
       ) : isPlacementPhase ? (
         <div>
           {/* Ready Status Messages */}

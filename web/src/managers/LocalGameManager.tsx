@@ -294,10 +294,21 @@ export default function LocalGameManager({ onBack }: Props) {
       )}
 
       {phase === 'GAME_OVER' && (
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">🎉 {(winner && names[winner]) ? names[winner] : `Player ${winner}`} wins!</h2>
-          <div className="text-muted-foreground">Press Restart to play again.</div>
-        </div>
+        <PlayView
+          currentPlayer={winner || 1}
+          currentPlayerName={winner ? names[winner] : undefined}
+          opponentFleet={winner === 2 ? p1.fleet : p2.fleet}
+          attackerShots={winner === 2 ? p2.shots : p1.shots}
+          onFire={handleFire}
+          ownFleet={winner === 2 ? p2.fleet : p1.fleet}
+          opponentShots={winner === 2 ? p1.shots : p2.shots}
+          lastAttackerShot={winner === 2 ? lastShotP2 : lastShotP1}
+          lastOpponentShot={winner === 2 ? lastShotP1 : lastShotP2}
+          disabled
+          banner={`${(winner && names[winner]) ? names[winner] : `Player ${winner}`} wins!`}
+          ctaLabel="Restart"
+          onCta={handleReset}
+        />
       )}
 
       <SwapOverlay

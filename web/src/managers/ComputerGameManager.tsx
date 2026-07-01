@@ -278,10 +278,21 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
       )}
 
       {phase === 'GAME_OVER' && (
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">🎉 {(winner && names[winner]) ? names[winner] : winner === 1 ? 'You' : 'Computer'} wins!</h2>
-          <div className="text-muted-foreground">Press Restart to play again.</div>
-        </div>
+        <PlayView
+          currentPlayer={1}
+          currentPlayerName={names[1]}
+          opponentFleet={p2.fleet}
+          attackerShots={p1.shots}
+          onFire={handleFire}
+          ownFleet={p1.fleet}
+          opponentShots={p2.shots}
+          lastAttackerShot={lastShotP1}
+          lastOpponentShot={lastShotP2}
+          disabled
+          banner={`${(winner && names[winner]) ? names[winner] : winner === 1 ? 'You' : 'Computer'} wins!`}
+          ctaLabel="Restart"
+          onCta={handleReset}
+        />
       )}
 
       {phase === 'GAME_OVER' && showConfetti && <Confetti loop origin="center" />}
