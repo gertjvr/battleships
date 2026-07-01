@@ -50,6 +50,7 @@ export default function App() {
     const roomParam = query.get('room');
     const room = roomParam ? normalizeRoomCode(roomParam) : undefined;
     const role = (query.get('role') as 'player' | 'spectator' | null) || undefined;
+    const mode = query.get('mode') === 'create' ? 'create' : 'join';
     const asPlayer = query.get('as');
     const initialPlayer = asPlayer === '1' ? 1 : asPlayer === '2' ? 2 : undefined;
     return (
@@ -59,6 +60,7 @@ export default function App() {
         initialRoomCode={room || null}
         initialRole={role}
         initialPlayerHint={initialPlayer}
+        initialConnectionMode={mode}
       />
     );
   }

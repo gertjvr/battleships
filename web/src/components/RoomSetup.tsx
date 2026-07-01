@@ -15,9 +15,10 @@ interface RoomSetupProps {
   onCreateRoom: (roomCode: string) => void;
   onJoinRoom: (roomCode: string) => void;
   onSpectate: (roomCode: string) => void;
+  errorMessage?: string | null;
 }
 
-export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: RoomSetupProps) {
+export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate, errorMessage }: RoomSetupProps) {
   const [mode, setMode] = useState<'create' | 'join' | 'spectate'>('create');
   const [roomCode, setRoomCode] = useState('');
   const normalizedRoomCode = normalizeRoomCode(roomCode);
@@ -66,6 +67,14 @@ export default function RoomSetup({ onCreateRoom, onJoinRoom, onSpectate }: Room
         <CardDescription>Create a room, join a friend, or watch a game.</CardDescription>
       </CardHeader>
       <CardContent>
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-900"
+          >
+            {errorMessage}
+          </div>
+        )}
         <Tabs value={mode} onValueChange={(value) => setMode(value as typeof mode)} className="gap-4">
           <TabsList className="grid h-auto w-full grid-cols-3">
             <TabsTrigger value="create" className="min-h-10">Create</TabsTrigger>

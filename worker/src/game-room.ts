@@ -34,13 +34,37 @@ export class GameRoom implements DurableObject {
   constructor(private state: DurableObjectState, private env: any) {}
 
   async init() {
+    await this.ensureGameState();
+  }
+
+  async loadExistingGameState(): Promise<boolean> {
+    if (this.gameState) {
+      return true;
+    }
+
     const stored = await this.state.storage.get(SNAPSHOT_KEY);
-    this.gameState = stored ? this.deserializeState(stored) : this.createInitialState();
+    if (!stored) {
+      return false;
+    }
+
+    this.gameState = this.deserializeState(stored);
+    return true;
+  }
+
+  async ensureGameState() {
+    if (await this.loadExistingGameState()) {
+      return;
+    }
+
+    this.gameState = this.createInitialState();
+    await this.state.storage.put(SNAPSHOT_KEY, this.serializeState(this.gameState));
+    await this.state.storage.deleteAlarm();
   }
 
   async alarm() {
-    if (!this.gameState) {
-      await this.init();
+    if (!(await this.loadExistingGameState())) {
+      await this.state.storage.deleteAlarm();
+      return;
     }
 
     if (this.gameState?.phase !== 'GAME_OVER') {
@@ -75,10 +99,6 @@ export class GameRoom implements DurableObject {
   async handleSession(ws: WebSocket) {
     ws.accept();
     this.connections.add(ws);
-
-    if (!this.gameState) {
-      await this.init();
-    }
 
     ws.addEventListener('message', async (event) => {
       try {
@@ -116,6 +136,9 @@ export class GameRoom implements DurableObject {
 
   async handleMessage(ws: WebSocket, msg: any) {
     switch (msg.type) {
+      case 'create':
+        await this.handleCreate(ws, msg.payload);
+        break;
       case 'join':
         await this.handleJoin(ws, msg.payload);
         break;
@@ -131,7 +154,17 @@ export class GameRoom implements DurableObject {
     }
   }
 
+  async handleCreate(ws: WebSocket, payload: any) {
+    await this.ensureGameState();
+    await this.handleJoin(ws, payload);
+  }
+
   async handleJoin(ws: WebSocket, payload: any) {
+    if (!(await this.loadExistingGameState())) {
+      this.sendRoomNotFound(ws);
+      return;
+    }
+
     let player: number;
     let sessionToken = payload.sessionToken;
 
@@ -161,25 +194,24 @@ export class GameRoom implements DurableObject {
     this.sessions.set(ws, sessionToken);
 
     // Send current state snapshot
-    const snapshot = this.gameState || this.createInitialState();
     ws.send(JSON.stringify({
       type: 'state',
-      payload: this.serializeState(snapshot),
+      payload: this.serializeState(this.gameState!),
       meta: { player, sessionToken }
     }));
   }
 
   async handleSpectate(ws: WebSocket, payload: any) {
+    if (!(await this.loadExistingGameState())) {
+      this.sendRoomNotFound(ws);
+      return;
+    }
+
     // Add to spectators set
     this.spectators.add(ws);
 
-    // Initialize game state if needed
-    if (!this.gameState) {
-      await this.init();
-    }
-
     // Send current state snapshot to spectator
-    const snapshot = this.gameState || this.createInitialState();
+    const snapshot = this.gameState!;
     ws.send(JSON.stringify({
       type: 'state',
       payload: this.serializeState(snapshot),
@@ -199,6 +231,11 @@ export class GameRoom implements DurableObject {
 
   async handleAction(ws: WebSocket, msg: any) {
     const { payload, id } = msg;
+    if (!(await this.loadExistingGameState())) {
+      this.sendRoomNotFound(ws);
+      return;
+    }
+
     const sessionToken = this.sessions.get(ws);
     const player = sessionToken ? this.playerSessions.get(sessionToken) : null;
 
@@ -368,6 +405,16 @@ export class GameRoom implements DurableObject {
 
   async scheduleGameOverCleanup() {
     await this.state.storage.setAlarm(Date.now() + GAME_OVER_CLEANUP_DELAY_MS);
+  }
+
+  sendRoomNotFound(ws: WebSocket) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      payload: {
+        code: 'ROOM_NOT_FOUND',
+        message: 'That room does not exist yet. Check the code or ask the host to create it first.'
+      }
+    }));
   }
 
   applyAction(state: GameState, payload: ActionPayload): GameState {

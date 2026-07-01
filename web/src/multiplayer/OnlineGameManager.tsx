@@ -37,14 +37,24 @@ interface OnlineGameManagerProps {
   initialRoomCode?: string | null;
   initialRole?: 'player' | 'spectator' | null;
   initialPlayerHint?: 1 | 2 | null;
+  initialConnectionMode?: 'create' | 'join';
 }
 
-export default function OnlineGameManager({ onBack, initialPlayerName, initialRoomCode = null, initialRole = 'player', initialPlayerHint = null }: OnlineGameManagerProps) {
+export default function OnlineGameManager({
+  onBack,
+  initialPlayerName,
+  initialRoomCode = null,
+  initialRole = 'player',
+  initialPlayerHint = null,
+  initialConnectionMode = 'join'
+}: OnlineGameManagerProps) {
   if (initialRole === 'spectator') {
     return <SpectatorGameManager onBack={onBack} initialRoomCode={initialRoomCode} />;
   }
 
   const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode ? normalizeRoomCode(initialRoomCode) : null);
+  const [playerConnectionMode, setPlayerConnectionMode] = useState<'create' | 'join'>(initialConnectionMode);
+  const [roomEntryError, setRoomEntryError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string>(initialPlayerName);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myPlayer, setMyPlayer] = useState<1 | 2 | null>(initialPlayerHint);
@@ -57,7 +67,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   const copyResetTimer = useRef<number | null>(null);
   const nameDebounceTimer = useRef<number | null>(null);
 
-  const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false);
+  const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false, playerConnectionMode);
 
   const handleCopyRoomCode = useCallback(async () => {
     if (!roomCode) return;
@@ -100,6 +110,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
     switch (lastMessage.type) {
       case 'state':
         console.log('🔧 OnlineGameManager received state message:', lastMessage);
+        setRoomEntryError(null);
         // Deserialize the game state
         const state = lastMessage.payload;
         if (state) {
@@ -142,8 +153,10 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
 
       case 'error':
         console.error('WebSocket error:', lastMessage.payload);
-        if (lastMessage.payload?.code === 'ROOM_FULL') {
-          alert('Room is full. Please try a different room.');
+        if (lastMessage.payload?.code === 'ROOM_FULL' || lastMessage.payload?.code === 'ROOM_NOT_FOUND') {
+          setRoomEntryError(lastMessage.payload.message || 'Could not join that room.');
+          setGameState(null);
+          setMyPlayer(null);
           setRoomCode(null);
           window.location.hash = '/online';
         }
@@ -195,15 +208,20 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   // Handle room creation/joining
   const handleCreateRoom = useCallback((code: string) => {
     const normalized = normalizeRoomCode(code);
+    setRoomEntryError(null);
+    setPlayerConnectionMode('create');
     setRoomCode(normalized);
     const params = new URLSearchParams();
     params.set('room', normalized);
     params.set('role', 'player');
+    params.set('mode', 'create');
     window.location.hash = `/online?${params.toString()}`;
   }, []);
 
   const handleJoinRoom = useCallback((code: string) => {
     const normalized = normalizeRoomCode(code);
+    setRoomEntryError(null);
+    setPlayerConnectionMode('join');
     setRoomCode(normalized);
     const params = new URLSearchParams();
     params.set('room', normalized);
@@ -213,6 +231,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
 
   const handleSpectate = useCallback((code: string) => {
     const normalized = normalizeRoomCode(code);
+    setRoomEntryError(null);
     const params = new URLSearchParams();
     params.set('room', normalized);
     params.set('role', 'spectator');
@@ -224,12 +243,13 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
     const params = new URLSearchParams();
     params.set('room', roomCode);
     params.set('role', 'player');
+    if (playerConnectionMode === 'create' && !myPlayer) params.set('mode', 'create');
     if (myPlayer) params.set('as', String(myPlayer));
     const nextHash = `/online?${params.toString()}`;
     if (window.location.hash.slice(1) !== nextHash) {
       window.location.hash = nextHash;
     }
-  }, [roomCode, myPlayer]);
+  }, [roomCode, myPlayer, playerConnectionMode]);
 
   // Game action handlers
   const handlePlace = useCallback((c: Coord) => {
@@ -372,6 +392,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
           onCreateRoom={handleCreateRoom} 
           onJoinRoom={handleJoinRoom}
           onSpectate={handleSpectate}
+          errorMessage={roomEntryError}
         />
       </div>
     );

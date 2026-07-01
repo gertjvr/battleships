@@ -35,6 +35,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
   const [inputRoomCode, setInputRoomCode] = useState<string>(initialRoomCode ? formatRoomCode(initialRoomCode) : '');
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [spectatorCount, setSpectatorCount] = useState<number>(0);
+  const [roomEntryError, setRoomEntryError] = useState<string | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
 
   const { connectionState, lastMessage } = useWebSocket(roomCode, true);
@@ -44,6 +45,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
     if (!lastMessage) return;
 
     if (lastMessage.type === 'state') {
+      setRoomEntryError(null);
       const state = lastMessage.payload;
       if (state) {
         const deserializedState: GameState = {
@@ -70,9 +72,12 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
         }
       }
     } else if (lastMessage.type === 'error') {
-      if (lastMessage.payload?.code === 'ROOM_FULL') {
-        alert('Room is full. Please try a different room.');
+      if (lastMessage.payload?.code === 'ROOM_FULL' || lastMessage.payload?.code === 'ROOM_NOT_FOUND') {
+        setRoomEntryError(lastMessage.payload.message || 'Could not watch that room.');
+        setGameState(null);
+        setSpectatorCount(0);
         setRoomCode('');
+        window.location.hash = '/online?role=spectator';
       } else {
         alert(lastMessage.payload?.message || 'Connection error');
       }
@@ -82,6 +87,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
   const handleJoinSpectator = useCallback(() => {
     const normalized = normalizeRoomCode(inputRoomCode);
     if (normalized.length === 6) {
+      setRoomEntryError(null);
       setRoomCode(normalized);
       const params = new URLSearchParams();
       params.set('room', normalized);
@@ -104,6 +110,14 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
               <Home />
               Menu
             </Button>
+            {roomEntryError && (
+              <div
+                role="alert"
+                className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-900"
+              >
+                {roomEntryError}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="spectator-room-code">Room code</Label>
               <Input

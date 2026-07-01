@@ -22,9 +22,11 @@ interface WebSocketHook {
   lastMessage: WebSocketMessage | null;
 }
 
+type PlayerConnectionMode = 'create' | 'join';
+
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8787';
 
-export function useWebSocket(room: string, isSpectator: boolean = false): WebSocketHook {
+export function useWebSocket(room: string, isSpectator: boolean = false, playerConnectionMode: PlayerConnectionMode = 'join'): WebSocketHook {
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     status: 'disconnected',
     player: null,
@@ -39,6 +41,7 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const pendingActions = useRef(new Map<string, any>());
+  const manualCloseSockets = useRef(new WeakSet<WebSocket>());
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN || ws.current?.readyState === WebSocket.CONNECTING) {
@@ -63,7 +66,7 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
       } else {
         const sessionToken = localStorage.getItem(`kids-battleships:session:${room}`);
         websocket.send(JSON.stringify({
-          type: 'join',
+          type: playerConnectionMode,
           payload: { room, sessionToken }
         }));
       }
@@ -107,8 +110,13 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
             break;
             
           case 'error':
+            if (message.payload?.code === 'ROOM_NOT_FOUND') {
+              manualCloseSockets.current.add(websocket);
+              websocket.close();
+            }
             setConnectionState(prev => ({
               ...prev,
+              status: message.payload?.code === 'ROOM_NOT_FOUND' ? 'disconnected' : prev.status,
               error: message.payload?.message || 'Unknown error'
             }));
             break;
@@ -129,7 +137,15 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
     
     websocket.onclose = () => {
       console.log('WebSocket disconnected');
+      const wasManualClose = manualCloseSockets.current.has(websocket);
+      if (ws.current === websocket) {
+        ws.current = null;
+      }
       setConnectionState(prev => ({ ...prev, status: 'disconnected' }));
+
+      if (wasManualClose) {
+        return;
+      }
       
       // Auto-reconnect with exponential backoff
       if (reconnectAttempts.current < maxReconnectAttempts) {
@@ -144,7 +160,7 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
     };
     
     ws.current = websocket;
-  }, [room]);
+  }, [room, isSpectator, playerConnectionMode]);
 
   const sendMessage = useCallback((message: any) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -183,6 +199,7 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (ws.current) {
+        manualCloseSockets.current.add(ws.current);
         ws.current.close();
       }
     };
@@ -192,6 +209,7 @@ export function useWebSocket(room: string, isSpectator: boolean = false): WebSoc
   useEffect(() => {
     return () => {
       if (ws.current) {
+        manualCloseSockets.current.add(ws.current);
         ws.current.close();
       }
     };
