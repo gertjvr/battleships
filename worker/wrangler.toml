@@ -3,7 +3,7 @@ main = "dist/index.js"
 compatibility_date = "2025-09-03"
 
 [observability.logs]
-enabled = false
+enabled = true
 invocation_logs = true
 
 [[durable_objects.bindings]]
@@ -13,3 +13,4 @@ class_name = "GameRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
+
