@@ -1,5 +1,8 @@
 import { canPlace, fire, allSunk, FLEET_SIZES, placeShip, type Coord, type ShipSize, type Orientation, type Ship, type Player } from '@app/engine';
 
+const SNAPSHOT_KEY = 'snapshot';
+const GAME_OVER_CLEANUP_DELAY_MS = 24 * 60 * 60 * 1000;
+
 interface GameState {
   phase: 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
   p1: Player;
@@ -31,8 +34,32 @@ export class GameRoom implements DurableObject {
   constructor(private state: DurableObjectState, private env: any) {}
 
   async init() {
-    const stored = await this.state.storage.get('snapshot');
+    const stored = await this.state.storage.get(SNAPSHOT_KEY);
     this.gameState = stored ? this.deserializeState(stored) : this.createInitialState();
+  }
+
+  async alarm() {
+    if (!this.gameState) {
+      await this.init();
+    }
+
+    if (this.gameState?.phase !== 'GAME_OVER') {
+      await this.state.storage.deleteAlarm();
+      return;
+    }
+
+    if (this.connections.size > 0) {
+      await this.scheduleGameOverCleanup();
+      return;
+    }
+
+    await this.state.storage.deleteAlarm();
+    await this.state.storage.deleteAll();
+    this.gameState = null;
+    this.playerSessions.clear();
+    this.sessions = new WeakMap();
+    this.spectators.clear();
+    this.recentActions.clear();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -230,7 +257,12 @@ export class GameRoom implements DurableObject {
     // Apply action and broadcast to all clients with ack
     this.gameState = this.applyAction(this.gameState!, payload);
     const snapshot = this.serializeState(this.gameState);
-    await this.state.storage.put('snapshot', snapshot);
+    await this.state.storage.put(SNAPSHOT_KEY, snapshot);
+    if (this.gameState.phase === 'GAME_OVER') {
+      await this.scheduleGameOverCleanup();
+    } else {
+      await this.state.storage.deleteAlarm();
+    }
     // Acknowledge action id for idempotency
     this.broadcast({ type: 'action', id, payload, meta: { ack: true } });
     // Also broadcast updated state so all clients sync to authoritative version
@@ -332,6 +364,10 @@ export class GameRoom implements DurableObject {
     }
 
     return true;
+  }
+
+  async scheduleGameOverCleanup() {
+    await this.state.storage.setAlarm(Date.now() + GAME_OVER_CLEANUP_DELAY_MS);
   }
 
   applyAction(state: GameState, payload: ActionPayload): GameState {
