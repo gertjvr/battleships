@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import SwapOverlay from '../components/SwapOverlay';
@@ -127,7 +127,7 @@ export default function LocalGameManager({ onBack }: Props) {
     }
   }
 
-  function handleHover(c: Coord | null) {
+  const handleHover = useCallback((c: Coord | null) => {
     const size = nextSize;
     if (!size || !c) {
       setPreview(null);
@@ -138,7 +138,7 @@ export default function LocalGameManager({ onBack }: Props) {
       ? canPlace(p1.fleet, c, size, orientation)
       : canPlace(p2.fleet, c, size, orientation);
     setPreview({ coords, valid });
-  }
+  }, [nextSize, orientation, phase, p1.fleet, p2.fleet]);
 
   function handleUndo() {
     if (phase === 'P1_PLACE' && p1.fleet.length > 0) {

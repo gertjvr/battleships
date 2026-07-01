@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PlacementView from '../views/PlacementView';
 import PlayView from '../views/PlayView';
 import Confetti from '../components/Confetti';
@@ -51,6 +51,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [aiMem, setAiMem] = useState(() => emptyAIMemory());
   const [names, setNames] = useState<{ 1?: string; 2?: string }>({ 2: 'Computer' });
+  const [hoverCoord, setHoverCoord] = useState<Coord | null>(null);
 
   const aiTimeoutRef = useRef<number | null>(null);
 
@@ -140,7 +141,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
     }
   }
 
-  function handleHover(c: Coord | null) {
+  const handleHover = useCallback((c: Coord | null) => {
     const size = nextSize;
     if (!size || !c) {
       setPreview(null);
@@ -149,7 +150,7 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
     const coords = coordsFor(c, size, orientation);
     const valid = canPlace(p1.fleet, c, size, orientation);
     setPreview({ coords, valid });
-  }
+  }, [nextSize, orientation, p1.fleet]);
 
   function handleUndo() {
     if (phase === 'P1_PLACE' && p1.fleet.length > 0) {
@@ -284,6 +285,8 @@ export default function ComputerGameManager({ onBack, difficulty }: Props) {
           lastAttackerShot={lastShotP1}
           lastOpponentShot={lastShotP2}
           disabled={phase === 'P2_TURN'}
+          hoverCoord={hoverCoord}
+          onHover={setHoverCoord}
         />
       )}
 

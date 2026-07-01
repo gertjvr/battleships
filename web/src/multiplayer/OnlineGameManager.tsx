@@ -44,6 +44,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
+  const [hoverCoord, setHoverCoord] = useState<Coord | null>(null);
 
   const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false);
 
@@ -477,7 +478,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
               text = entry.text;
             } else if (entry.target) {
               const coord = `${String.fromCharCode(65 + entry.target.c)}${entry.target.r + 1}`;
-              const result = entry.hit ? 'Hit 💥' : 'Miss 💧';
+              const result = entry.hit ? 'Hit 💥' : 'Miss 🌊';
               const sunk = entry.sunk ? ' (Sunk ship!)' : '';
               text = `${coord} - ${result}${sunk}`;
             } else {
@@ -490,6 +491,8 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
               key: `${entry.type}-${index}`
             };
           })}
+          hoverCoord={hoverCoord}
+          onHover={setHoverCoord}
         />
       )}
 

@@ -84,7 +84,7 @@ export default function PlayView({ currentPlayer, currentPlayerName, meLabel, th
         </div>
       </div>
       <div className="text-slate-700 text-sm">Tap a cell on Your Guesses to fire.</div>
-      <div className="text-slate-600 text-sm">Legend: 💥 Hit • 💧 Miss • 🚢 Sunk</div>
+      <div className="text-slate-600 text-sm">Legend: 💥 Hit • 🌊 Miss • 💥🚢 Sunk</div>
       {ctaLabel && (
         <div className="space-y-2">
           {ctaMessage && (

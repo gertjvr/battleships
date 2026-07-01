@@ -117,7 +117,7 @@ export default function SpectatorView({
       {/* Legend and game log */}
       <div className="space-y-4">
         <div className="text-slate-600 text-sm text-center">
-          Legend: 💥 Hit • 💧 Miss • 🚢 Sunk
+          Legend: 💥 Hit • 🌊 Miss • 💥🚢 Sunk
         </div>
 
         {chat && chat.length > 0 && (
