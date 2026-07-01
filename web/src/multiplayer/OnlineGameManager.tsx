@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWebSocket } from './useWebSocket';
 import RoomSetup from '../components/RoomSetup';
 import ConnectionStatus from '../components/ConnectionStatus';
@@ -11,7 +11,7 @@ import SpectatorGameManager from './SpectatorGameManager';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
 import { enableAudio, isAudioEnabled, playWin } from '../sound';
-import { normalizeRoomCode } from '../utils/roomCode';
+import { formatRoomCode, normalizeRoomCode } from '../utils/roomCode';
 
 type Phase = 'BOTH_PLACE' | 'P1_TURN' | 'P2_TURN' | 'GAME_OVER';
 
@@ -50,8 +50,35 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
+  const [copiedRoomCode, setCopiedRoomCode] = useState(false);
+  const [hasEditedPlayerName, setHasEditedPlayerName] = useState(Boolean(initialPlayerName.trim()));
+  const copyResetTimer = useRef<number | null>(null);
+  const nameDebounceTimer = useRef<number | null>(null);
 
   const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false);
+
+  const handleCopyRoomCode = useCallback(async () => {
+    if (!roomCode) return;
+
+    try {
+      await navigator.clipboard.writeText(formatRoomCode(roomCode));
+      setCopiedRoomCode(true);
+      if (copyResetTimer.current) window.clearTimeout(copyResetTimer.current);
+      copyResetTimer.current = window.setTimeout(() => {
+        setCopiedRoomCode(false);
+        copyResetTimer.current = null;
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to copy room code:', error);
+    }
+  }, [roomCode]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimer.current) window.clearTimeout(copyResetTimer.current);
+      if (nameDebounceTimer.current) window.clearTimeout(nameDebounceTimer.current);
+    };
+  }, []);
 
   // Handle game over effects
   useEffect(() => {
@@ -133,6 +160,35 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
       });
     }
   }, [connectionState.status, myPlayer, sendAction]); // Removed playerName from dependencies to send only once
+
+  useEffect(() => {
+    if (connectionState.status !== 'connected' && nameDebounceTimer.current) {
+      window.clearTimeout(nameDebounceTimer.current);
+      nameDebounceTimer.current = null;
+    }
+  }, [connectionState.status]);
+
+  const handlePlayerNameChange = useCallback((name: string) => {
+    setPlayerName(name);
+    setHasEditedPlayerName(true);
+
+    if (!myPlayer || connectionState.status !== 'connected') {
+      return;
+    }
+
+    if (nameDebounceTimer.current) {
+      window.clearTimeout(nameDebounceTimer.current);
+    }
+
+    nameDebounceTimer.current = window.setTimeout(() => {
+      sendAction({
+        type: 'setName',
+        player: myPlayer,
+        name: name.trim() || `Player ${myPlayer}`
+      });
+      nameDebounceTimer.current = null;
+    }, 450);
+  }, [connectionState.status, myPlayer, sendAction]);
 
   // Handle room creation/joining
   const handleCreateRoom = useCallback((code: string) => {
@@ -319,12 +375,25 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
     );
   }
 
+  const roomCodePanel = (
+    <div className="room-code-panel">
+      <div>
+        <div className="room-code-label">Room code</div>
+        <div className="room-code-value">{formatRoomCode(roomCode)}</div>
+      </div>
+      <button className="btn room-code-copy" onClick={handleCopyRoomCode}>
+        {copiedRoomCode ? 'Copied' : 'Copy'}
+      </button>
+    </div>
+  );
+
   console.log('🔧 OnlineGameManager render - gameState:', gameState, 'myPlayer:', myPlayer, 'connectionStatus:', connectionState.status);
 
   // Show loading/connecting state
   if (!gameState || connectionState.status !== 'connected') {
     return (
       <div className="online-game">
+        {roomCodePanel}
         <div className="flex items-center justify-between mb-4">
           <ConnectionStatus 
             status={connectionState.status}
@@ -376,6 +445,7 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
   // Check if I'm ready during placement
   const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
   const isOpponentReady = myPlayer === 1 ? gameState.p2Ready : gameState.p1Ready;
+  const displayedPlayerName = hasEditedPlayerName ? playerName : gameState.names[myPlayer || 1];
 
 
   return (
@@ -400,6 +470,8 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
           Back to Offline
         </button>
       </div>
+
+      {roomCodePanel}
 
       {gameState.phase === 'GAME_OVER' && gameState.winner ? (
         /* Game Over Screen */
@@ -437,14 +509,10 @@ export default function OnlineGameManager({ onBack, initialPlayerName, initialRo
           
           <PlacementView
             playerIndex={myPlayer || 1}
-            playerName={gameState.names[myPlayer || 1]}
+            playerName={displayedPlayerName}
             onNameChange={(name) => {
               if (myPlayer && !amIReady) { // Only allow name change if not ready
-                sendAction({
-                  type: 'setName',
-                  player: myPlayer,
-                  name: name
-                });
+                handlePlayerNameChange(name);
               }
             }}
             fleet={myPlayer === 1 ? gameState.p1.fleet : gameState.p2.fleet}
