@@ -1,13 +1,11 @@
 import React from 'react';
 import { Circle } from 'lucide-react';
-import { formatRoomCode } from '../utils/roomCode';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 
 interface ConnectionStatusProps {
   status: 'disconnected' | 'connecting' | 'connected';
   player: 1 | 2 | null;
-  roomCode?: string;
   error: string | null;
   p1Ready?: boolean;
   p2Ready?: boolean;
@@ -19,7 +17,6 @@ interface ConnectionStatusProps {
 
 export default function ConnectionStatus({
   status,
-  roomCode,
   error,
   isSpectator,
   spectatorCount,
@@ -44,11 +41,6 @@ export default function ConnectionStatus({
         <Circle className="size-2 fill-current" />
         {statusText}
       </Badge>
-      {roomCode && (
-        <span className="font-mono text-xs font-semibold tracking-wide text-muted-foreground">
-          {formatRoomCode(roomCode)}
-        </span>
-      )}
     </div>
   );
 }

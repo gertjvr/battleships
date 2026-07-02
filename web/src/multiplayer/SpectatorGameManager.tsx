@@ -158,7 +158,6 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
         <ConnectionStatus
           status={connectionState.status}
           player={null}
-          roomCode={roomCode}
           error={connectionState.error}
           playerNames={gameState?.names}
           isSpectator={true}
@@ -169,7 +168,6 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
           <Card className="rounded-lg">
             <CardContent className="p-6 text-center">
               <p className="text-base font-medium">Loading game</p>
-              <p className="mt-2 text-sm text-muted-foreground">Room {formatRoomCode(roomCode)}</p>
             </CardContent>
           </Card>
         )}
@@ -192,7 +190,6 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
       <ConnectionStatus
         status={connectionState.status}
         player={null}
-        roomCode={roomCode}
         error={connectionState.error}
         playerNames={gameState?.names}
         isSpectator={true}

@@ -8,7 +8,6 @@ import SwapOverlay from '../components/SwapOverlay';
 import Confetti from '../components/Confetti';
 import SpectatorGameManager from './SpectatorGameManager';
 import GameHeader from '../components/GameHeader';
-import RoomCodePanel from '../components/RoomCodePanel';
 import { Card, CardContent } from '../components/ui/card';
 import type { Coord, Orientation, Player, ShipSize } from '@app/engine';
 import { canPlace, coordsFor } from '@app/engine';
@@ -62,32 +61,13 @@ export default function OnlineGameManager({
   const [overlay, setOverlay] = useState<{ shown: boolean; message: string; next?: Phase }>({ shown: false, message: '' });
   const [preview, setPreview] = useState<{ coords: Coord[]; valid: boolean } | null>(null);
   const [audioReady, setAudioReady] = useState<boolean>(() => isAudioEnabled());
-  const [copiedRoomCode, setCopiedRoomCode] = useState(false);
   const [hasEditedPlayerName, setHasEditedPlayerName] = useState(Boolean(initialPlayerName.trim()));
-  const copyResetTimer = useRef<number | null>(null);
   const nameDebounceTimer = useRef<number | null>(null);
 
   const { connectionState, sendAction, lastMessage } = useWebSocket(roomCode || '', false, playerConnectionMode);
 
-  const handleCopyRoomCode = useCallback(async () => {
-    if (!roomCode) return;
-
-    try {
-      await navigator.clipboard.writeText(formatRoomCode(roomCode));
-      setCopiedRoomCode(true);
-      if (copyResetTimer.current) window.clearTimeout(copyResetTimer.current);
-      copyResetTimer.current = window.setTimeout(() => {
-        setCopiedRoomCode(false);
-        copyResetTimer.current = null;
-      }, 1500);
-    } catch (error) {
-      console.error('Failed to copy room code:', error);
-    }
-  }, [roomCode]);
-
   useEffect(() => {
     return () => {
-      if (copyResetTimer.current) window.clearTimeout(copyResetTimer.current);
       if (nameDebounceTimer.current) window.clearTimeout(nameDebounceTimer.current);
     };
   }, []);
@@ -398,9 +378,6 @@ export default function OnlineGameManager({
     );
   }
 
-  const roomCodePanel = (
-    <RoomCodePanel roomCode={roomCode} copied={copiedRoomCode} onCopy={handleCopyRoomCode} />
-  );
   const onlineTitle = `Online Multiplayer - ${formatRoomCode(roomCode)}`;
 
   console.log('🔧 OnlineGameManager render - gameState:', gameState, 'myPlayer:', myPlayer, 'connectionStatus:', connectionState.status);
@@ -414,7 +391,6 @@ export default function OnlineGameManager({
           subtitle="Connect to your room, then place your ships."
           onBack={onBack}
         />
-        {roomCodePanel}
         <ConnectionStatus
           status={connectionState.status}
           player={myPlayer}
@@ -461,8 +437,6 @@ export default function OnlineGameManager({
           setAudioReady(ok || isAudioEnabled());
         }}
       />
-
-      {roomCodePanel}
 
       <ConnectionStatus
         status={connectionState.status}
