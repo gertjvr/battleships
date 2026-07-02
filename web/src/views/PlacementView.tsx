@@ -47,9 +47,12 @@ export default function PlacementView({
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             {playerName ? `${playerName}` : `Player ${playerIndex}`}: Place Ships
           </h2>
-          <Badge variant={allPlaced ? 'default' : 'outline'} className="px-3 py-1">
-            {allPlaced ? 'All ships placed' : `Place length ${nextSize}`}
-          </Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary" className="px-3 py-1">Player {playerIndex}</Badge>
+            <Badge variant={allPlaced ? 'default' : 'outline'} className="px-3 py-1">
+              {allPlaced ? 'All ships placed' : `Place length ${nextSize}`}
+            </Badge>
+          </div>
         </div>
         <div className="w-full space-y-2 sm:w-64">
           <Label htmlFor={`player-${playerIndex}-name`}>Player name</Label>

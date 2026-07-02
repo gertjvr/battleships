@@ -19,7 +19,6 @@ interface ConnectionStatusProps {
 
 export default function ConnectionStatus({
   status,
-  player,
   roomCode,
   error,
   isSpectator,
@@ -30,7 +29,7 @@ export default function ConnectionStatus({
     if (status === 'connecting') return 'Connecting';
     if (status === 'disconnected') return error || 'Disconnected';
     if (isSpectator) return spectatorCount ? `Spectating (${spectatorCount})` : 'Spectating';
-    return player ? `Player ${player} connected` : 'Connected';
+    return 'Connected';
   })();
 
   const tone = (() => {

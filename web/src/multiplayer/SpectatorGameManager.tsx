@@ -145,13 +145,14 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
     );
   }
 
+  const spectatorTitle = `Spectating Game - ${formatRoomCode(roomCode)}`;
+
   // Show loading/connecting state
   if (!gameState || connectionState.status !== 'connected') {
     return (
       <div className="mx-auto w-full max-w-5xl space-y-4 p-4 sm:p-6">
         <GameHeader
-          title="Spectating Game"
-          subtitle={`Room ${formatRoomCode(roomCode)}`}
+          title={spectatorTitle}
           onBack={onBack}
         />
         <ConnectionStatus
@@ -179,8 +180,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-6">
       <GameHeader
-        title="Spectating Game"
-        subtitle={`Room ${formatRoomCode(roomCode)}`}
+        title={spectatorTitle}
         onBack={onBack}
         audioReady={audioReady}
         onEnableAudio={async () => {

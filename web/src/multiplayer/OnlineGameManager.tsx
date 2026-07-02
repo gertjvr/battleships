@@ -401,6 +401,7 @@ export default function OnlineGameManager({
   const roomCodePanel = (
     <RoomCodePanel roomCode={roomCode} copied={copiedRoomCode} onCopy={handleCopyRoomCode} />
   );
+  const onlineTitle = `Online Multiplayer - ${formatRoomCode(roomCode)}`;
 
   console.log('🔧 OnlineGameManager render - gameState:', gameState, 'myPlayer:', myPlayer, 'connectionStatus:', connectionState.status);
 
@@ -409,7 +410,7 @@ export default function OnlineGameManager({
     return (
       <div className="mx-auto w-full max-w-5xl space-y-4 p-4 sm:p-6">
         <GameHeader
-          title="Online Multiplayer"
+          title={onlineTitle}
           subtitle="Connect to your room, then place your ships."
           onBack={onBack}
         />
@@ -452,8 +453,7 @@ export default function OnlineGameManager({
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-6">
       <GameHeader
-        title="Online Multiplayer"
-        subtitle={myPlayer ? `You are Player ${myPlayer}` : undefined}
+        title={onlineTitle}
         onBack={onBack}
         audioReady={audioReady}
         onEnableAudio={async () => {
