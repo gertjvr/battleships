@@ -21,6 +21,7 @@ type Props = {
   sunkOnP2?: Set<string> | null;
   sinkingOnP1?: Set<string> | null;
   sinkingOnP2?: Set<string> | null;
+  statusSlot?: React.ReactNode;
 };
 
 export default function SpectatorView({
@@ -40,6 +41,7 @@ export default function SpectatorView({
   sunkOnP2,
   sinkingOnP1,
   sinkingOnP2,
+  statusSlot,
 }: Props) {
   const isGameOver = phase === 'GAME_OVER';
   const isPlacementPhase = phase === 'BOTH_PLACE';
@@ -48,7 +50,10 @@ export default function SpectatorView({
     <div className="space-y-6">
       {/* Header with game status */}
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold">Spectating Game</h1>
+        <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
+          <h1 className="text-2xl font-bold">Spectating Game</h1>
+          {statusSlot && <div className="shrink-0">{statusSlot}</div>}
+        </div>
         {spectatorCount !== undefined && (
           <Badge variant="outline" className="mx-auto">
             {spectatorCount} spectator{spectatorCount !== 1 ? 's' : ''} watching

@@ -21,6 +21,7 @@ type Props = {
   onDone: () => void;
   previewCoords?: Coord[];
   previewValid?: boolean;
+  statusSlot?: React.ReactNode;
 };
 
 export default function PlacementView({
@@ -37,6 +38,7 @@ export default function PlacementView({
   onDone,
   previewCoords,
   previewValid,
+  statusSlot,
 }: Props) {
   const allPlaced = !nextSize;
 
@@ -44,9 +46,12 @@ export default function PlacementView({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-            {playerName ? `${playerName}` : `Player ${playerIndex}`}: Place Ships
-          </h2>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+              {playerName ? `${playerName}` : `Player ${playerIndex}`}: Place Ships
+            </h2>
+            {statusSlot && <div className="shrink-0">{statusSlot}</div>}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="px-3 py-1">Player {playerIndex}</Badge>
             <Badge variant={allPlaced ? 'default' : 'outline'} className="px-3 py-1">

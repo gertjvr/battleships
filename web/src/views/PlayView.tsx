@@ -27,13 +27,17 @@ type Props = {
   onCta?: () => void;
   lastSunkOnOpponent?: Set<string> | null;
   lastSunkOnSelf?: Set<string> | null;
+  statusSlot?: React.ReactNode;
 };
 
-export default function PlayView({ currentPlayer, currentPlayerName, meLabel, themLabel, opponentFleet, attackerShots, onFire, ownFleet, opponentShots, banner, lastAttackerShot, lastOpponentShot, sunkOnOpponent, sunkOnSelf, sinkingOnOpponent, sinkingOnSelf, disabled, ctaLabel, ctaMessage, onCta, lastSunkOnOpponent, lastSunkOnSelf, chat }: Props & { chat?: ChatEntry[] }) {
+export default function PlayView({ currentPlayer, currentPlayerName, meLabel, themLabel, opponentFleet, attackerShots, onFire, ownFleet, opponentShots, banner, lastAttackerShot, lastOpponentShot, sunkOnOpponent, sunkOnSelf, sinkingOnOpponent, sinkingOnSelf, disabled, ctaLabel, ctaMessage, onCta, lastSunkOnOpponent, lastSunkOnSelf, statusSlot, chat }: Props & { chat?: ChatEntry[] }) {
   const isComputer = !!(currentPlayerName && /computer/i.test(currentPlayerName));
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{currentPlayerName ? currentPlayerName : `Player ${currentPlayer}`}</h1>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold">{currentPlayerName ? currentPlayerName : `Player ${currentPlayer}`}</h1>
+        {statusSlot && <div className="shrink-0">{statusSlot}</div>}
+      </div>
       {(() => {
         const has = !!banner;
         const thinking = has && /computer is thinking/i.test(banner!);

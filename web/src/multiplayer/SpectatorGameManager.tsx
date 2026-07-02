@@ -155,14 +155,16 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
           title={spectatorTitle}
           onBack={onBack}
         />
-        <ConnectionStatus
-          status={connectionState.status}
-          player={null}
-          error={connectionState.error}
-          playerNames={gameState?.names}
-          isSpectator={true}
-          spectatorCount={spectatorCount}
-        />
+        {connectionState.status !== 'connected' && (
+          <ConnectionStatus
+            status={connectionState.status}
+            player={null}
+            error={connectionState.error}
+            playerNames={gameState?.names}
+            isSpectator={true}
+            spectatorCount={spectatorCount}
+          />
+        )}
         
         {connectionState.status === 'connected' && (
           <Card className="rounded-lg">
@@ -174,6 +176,17 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
       </div>
     );
   }
+
+  const connectionStatusSlot = (
+    <ConnectionStatus
+      status={connectionState.status}
+      player={null}
+      error={connectionState.error}
+      playerNames={gameState?.names}
+      isSpectator={true}
+      spectatorCount={spectatorCount}
+    />
+  );
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-6">
@@ -187,15 +200,6 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
         }}
       />
 
-      <ConnectionStatus
-        status={connectionState.status}
-        player={null}
-        error={connectionState.error}
-        playerNames={gameState?.names}
-        isSpectator={true}
-        spectatorCount={spectatorCount}
-      />
-
       {/* Spectator view */}
       <SpectatorView
         p1Name={gameState.names[1]}
@@ -207,6 +211,7 @@ export default function SpectatorGameManager({ onBack, initialRoomCode = null }:
         currentTurn={gameState.phase === 'P1_TURN' ? 1 : 2}
         phase={gameState.phase}
         spectatorCount={spectatorCount}
+        statusSlot={connectionStatusSlot}
         chat={gameState.log.map((entry, index) => {
           let text = '';
           if (entry.message) {

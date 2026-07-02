@@ -391,14 +391,16 @@ export default function OnlineGameManager({
           subtitle="Connect to your room, then place your ships."
           onBack={onBack}
         />
-        <ConnectionStatus
-          status={connectionState.status}
-          player={myPlayer}
-          error={connectionState.error}
-          p1Ready={gameState?.p1Ready}
-          p2Ready={gameState?.p2Ready}
-          playerNames={gameState?.names}
-        />
+        {connectionState.status !== 'connected' && (
+          <ConnectionStatus
+            status={connectionState.status}
+            player={myPlayer}
+            error={connectionState.error}
+            p1Ready={gameState?.p1Ready}
+            p2Ready={gameState?.p2Ready}
+            playerNames={gameState?.names}
+          />
+        )}
         {connectionState.status === 'connected' && myPlayer === 1 && (
           <Card className="rounded-lg border-sky-200">
             <CardContent className="space-y-2 p-6 text-center">
@@ -424,6 +426,16 @@ export default function OnlineGameManager({
   const amIReady = myPlayer === 1 ? gameState.p1Ready : gameState.p2Ready;
   const isOpponentReady = myPlayer === 1 ? gameState.p2Ready : gameState.p1Ready;
   const displayedPlayerName = hasEditedPlayerName ? playerName : gameState.names[myPlayer || 1];
+  const connectionStatusSlot = (
+    <ConnectionStatus
+      status={connectionState.status}
+      player={myPlayer}
+      error={connectionState.error}
+      p1Ready={gameState?.p1Ready}
+      p2Ready={gameState?.p2Ready}
+      playerNames={gameState?.names}
+    />
+  );
 
 
   return (
@@ -436,15 +448,6 @@ export default function OnlineGameManager({
           const ok = await enableAudio();
           setAudioReady(ok || isAudioEnabled());
         }}
-      />
-
-      <ConnectionStatus
-        status={connectionState.status}
-        player={myPlayer}
-        error={connectionState.error}
-        p1Ready={gameState?.p1Ready}
-        p2Ready={gameState?.p2Ready}
-        playerNames={gameState?.names}
       />
 
       {gameState.phase === 'GAME_OVER' && gameState.winner ? (
@@ -464,6 +467,7 @@ export default function OnlineGameManager({
             : `${gameState.names[gameState.winner] || `Player ${gameState.winner}`} wins!`}
           ctaLabel="Restart"
           onCta={handleReset}
+          statusSlot={connectionStatusSlot}
           chat={gameState.log.map((entry, index) => {
             let text = '';
             if (entry.message) {
@@ -521,6 +525,7 @@ export default function OnlineGameManager({
             onDone={handleDonePlacement}
             previewCoords={preview?.coords}
             previewValid={preview?.valid}
+            statusSlot={connectionStatusSlot}
           />
         </div>
       ) : (
@@ -536,6 +541,7 @@ export default function OnlineGameManager({
           opponentShots={myPlayer === 1 ? gameState.p2.shots : gameState.p1.shots}
           disabled={!isMyTurn || connectionState.status !== 'connected'}
           banner={isMyTurn ? "Take your shot! 🎯" : `Waiting for ${gameState.names[gameState.phase === 'P1_TURN' ? 1 : 2] || `Player ${gameState.phase === 'P1_TURN' ? 1 : 2}`}...`}
+          statusSlot={connectionStatusSlot}
           chat={gameState.log.map((entry, index) => {
             let text = '';
             if (entry.message) {
